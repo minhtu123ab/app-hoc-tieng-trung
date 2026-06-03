@@ -111,4 +111,3 @@ docker-compose.yml
 - Speech-to-Text (chấm phát âm)
 - OCR, Video learning, Reading assistant
 - Mobile app
-  a

@@ -8,6 +8,7 @@ import { PracticeModule } from './practice/practice.module';
 import { TutorModule } from './tutor/tutor.module';
 import { StatsModule } from './stats/stats.module';
 import { GeminiModule } from './gemini/gemini.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -21,5 +22,6 @@ import { GeminiModule } from './gemini/gemini.module';
     TutorModule,
     StatsModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

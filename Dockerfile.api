@@ -1,0 +1,26 @@
+FROM node:20-alpine AS builder
+RUN apk add --no-cache openssl libc6-compat && npm install -g pnpm@9
+WORKDIR /app
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages/shared ./packages/shared
+COPY apps/api ./apps/api
+COPY apps/web/package.json ./apps/web/
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @linguaflow/shared build
+WORKDIR /app/apps/api
+RUN pnpm exec prisma generate && pnpm build
+
+FROM node:20-alpine AS runner
+RUN apk add --no-cache openssl libc6-compat && npm install -g pnpm@9
+ENV NODE_ENV=production
+WORKDIR /app
+
+COPY --from=builder /app ./
+
+WORKDIR /app/apps/api
+EXPOSE 4000
+ENV PORT=4000
+
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node dist/main.js"]
