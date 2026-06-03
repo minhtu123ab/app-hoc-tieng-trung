@@ -4,6 +4,15 @@ import path from 'path';
 const nextConfig: NextConfig = {
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../../'),
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/login',
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     const backend = process.env.BACKEND_URL ?? 'http://localhost:4000';
     return [

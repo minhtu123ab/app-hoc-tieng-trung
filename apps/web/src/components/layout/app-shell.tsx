@@ -33,7 +33,7 @@ const navItems = [
   { href: '/guide', label: 'Hướng dẫn', icon: CircleHelp },
 ];
 
-const PUBLIC_PATHS = ['/login', '/register'];
+const PUBLIC_PATHS = ['/', '/login', '/register'];
 const SIDEBAR_KEY = 'lf_sidebar_collapsed';
 
 function NavLinks({

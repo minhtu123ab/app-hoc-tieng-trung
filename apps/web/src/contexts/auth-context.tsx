@@ -12,7 +12,11 @@ import { useRouter, usePathname } from 'next/navigation';
 import { api, clearTokens, getMe, loadTokens } from '@/lib/api';
 import type { UserDto } from '@linguaflow/shared';
 
-const PUBLIC_PATHS = ['/login', '/register'];
+const PUBLIC_PATHS = ['/', '/login', '/register'];
+
+function isPublicPath(path: string) {
+  return PUBLIC_PATHS.includes(path);
+}
 
 interface AuthContextValue {
   user: UserDto | null;
@@ -29,10 +33,10 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserDto | null>(null);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const [user, setUser] = useState<UserDto | null>(null);
+  const [loading, setLoading] = useState(() => !isPublicPath(pathname));
 
   const refreshUser = useCallback(async () => {
     const { accessToken } = loadTokens();
@@ -54,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const init = async () => {
       const { accessToken } = loadTokens();
-      const isPublic = PUBLIC_PATHS.includes(pathname);
+      const isPublic = isPublicPath(pathname);
 
       if (isPublic) {
         if (!cancelled) setLoading(false);
@@ -84,7 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    setLoading(true);
+    if (!isPublicPath(pathname)) {
+      setLoading(true);
+    }
     init();
 
     return () => {
