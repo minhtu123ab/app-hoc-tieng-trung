@@ -16,10 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'LinguaFlow AI - Học tiếng Trung',
   description: 'Nền tảng học tiếng Trung cá nhân hóa bằng AI',
-  icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
-  },
 };
 
 export default function RootLayout({
