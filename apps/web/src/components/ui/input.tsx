@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { controlFieldClass, controlFocusClass } from '@/lib/control-styles';
 import { InputHTMLAttributes, forwardRef } from 'react';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
@@ -6,7 +7,9 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     <input
       ref={ref}
       className={cn(
-        'w-full rounded-xl border border-border bg-card-solid/90 px-4 py-2.5 text-sm shadow-sm outline-none transition-all placeholder:text-muted/60 focus:border-primary/40 focus:ring-4 focus:ring-primary/10',
+        controlFieldClass,
+        controlFocusClass,
+        'w-full placeholder:text-muted/60',
         className,
       )}
       {...props}

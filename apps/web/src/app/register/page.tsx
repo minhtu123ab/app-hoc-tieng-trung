@@ -7,6 +7,8 @@ import { register } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { HSK_LEVEL_OPTIONS } from '@/lib/select-options';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Logo } from '@/components/brand/logo';
 import { HskLevel } from '@linguaflow/shared';
@@ -96,17 +98,11 @@ export default function RegisterPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Trình độ HSK</label>
-                <select
-                  className="w-full rounded-xl border border-border bg-card-solid/90 px-4 py-2.5 text-sm shadow-sm outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                <Select
                   value={hskLevel}
-                  onChange={(e) => setHskLevel(e.target.value as HskLevel)}
-                >
-                  {Object.values(HskLevel).map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setHskLevel(v as HskLevel)}
+                  options={HSK_LEVEL_OPTIONS}
+                />
               </div>
               {error && (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>

@@ -1,19 +1,28 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/contexts/auth-context';
 import { Card, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, ButtonLink } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Toolbar } from '@/components/ui/toolbar';
+import {
+  DECK_SOURCE_FILTER_OPTIONS,
+  HSK_FILTER_OPTIONS,
+  HSK_LEVEL_OPTIONS,
+} from '@/lib/select-options';
 import type { DeckDto, HskLevel } from '@linguaflow/shared';
 import { formatDate } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { PageSkeleton, EmptyState } from '@/components/ui/states';
+import { FolderPlus, Sparkles, Upload } from 'lucide-react';
 
 export default function DecksPage() {
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   const [hskFilter, setHskFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
@@ -56,6 +65,13 @@ export default function DecksPage() {
     });
   }, [decks, search, hskFilter, sourceFilter]);
 
+  const handleImport = async (file: File) => {
+    const text = await file.text();
+    const payload = JSON.parse(text);
+    await api.post('/decks/import', payload);
+    queryClient.invalidateQueries({ queryKey: ['decks'] });
+  };
+
   if (isLoading) return <PageSkeleton />;
 
   return (
@@ -64,33 +80,31 @@ export default function DecksPage() {
         title="Bộ từ vựng"
         description="Quản lý các bộ từ đã tạo hoặc sinh bằng AI"
         action={
-          <div className="flex flex-wrap gap-2">
+          <Toolbar>
             <Button variant="outline" onClick={() => setShowCreate(!showCreate)}>
-              + Tạo thủ công
+              <FolderPlus className="h-4 w-4" />
+              Tạo thủ công
             </Button>
-            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-border px-4 py-2 text-sm hover:bg-slate-50">
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="h-4 w-4" />
               Import JSON
-              <input
-                type="file"
-                accept="application/json"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const text = await file.text();
-                  const payload = JSON.parse(text);
-                  await api.post('/decks/import', payload);
-                  queryClient.invalidateQueries({ queryKey: ['decks'] });
-                }}
-              />
-            </label>
-            <Link
-              href="/generate"
-              className="inline-flex w-fit shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-red-700"
-            >
-              + Sinh từ AI
-            </Link>
-          </div>
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) await handleImport(file);
+                e.target.value = '';
+              }}
+            />
+            <ButtonLink href="/generate">
+              <Sparkles className="h-4 w-4" />
+              Sinh từ AI
+            </ButtonLink>
+          </Toolbar>
         }
       />
 
@@ -98,42 +112,37 @@ export default function DecksPage() {
         <Card className="max-w-md space-y-3">
           <Input placeholder="Tên bộ từ" value={title} onChange={(e) => setTitle(e.target.value)} />
           <Input placeholder="Chủ đề" value={topic} onChange={(e) => setTopic(e.target.value)} />
-          <Input placeholder="HSK (VD: HSK1)" value={hskLevel} onChange={(e) => setHskLevel(e.target.value as HskLevel)} />
+          <Select
+            value={hskLevel}
+            onChange={(v) => setHskLevel(v as HskLevel)}
+            options={HSK_LEVEL_OPTIONS}
+          />
           <Button onClick={() => createMutation.mutate()} disabled={!title || !topic}>
             Tạo bộ từ
           </Button>
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <Toolbar>
         <Input
           placeholder="Tìm theo tên, chủ đề..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
+          className="w-full min-w-[12rem] flex-1 sm:max-w-xs"
         />
-        <select
-          className="rounded-lg border border-border px-3 py-2 text-sm"
+        <Select
+          className="w-full sm:w-36"
           value={hskFilter}
-          onChange={(e) => setHskFilter(e.target.value)}
-        >
-          <option value="">Mọi HSK</option>
-          {['HSK1', 'HSK2', 'HSK3', 'HSK4', 'HSK5', 'HSK6', 'ADVANCED'].map((l) => (
-            <option key={l} value={l}>
-              {l}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-lg border border-border px-3 py-2 text-sm"
+          onChange={setHskFilter}
+          options={HSK_FILTER_OPTIONS}
+        />
+        <Select
+          className="w-full sm:w-36"
           value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value)}
-        >
-          <option value="">Mọi nguồn</option>
-          <option value="AI">AI</option>
-          <option value="MANUAL">Thủ công</option>
-        </select>
-      </div>
+          onChange={setSourceFilter}
+          options={DECK_SOURCE_FILTER_OPTIONS}
+        />
+      </Toolbar>
 
       {error && (
         <Button variant="outline" onClick={() => refetch()}>
@@ -143,7 +152,7 @@ export default function DecksPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
         {filtered.map((deck) => (
-          <Link key={deck.id} href={`/decks/${deck.id}`}>
+          <Link key={deck.id} href={`/decks/${deck.id}`} className="block">
             <Card className="h-full transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
               <CardTitle>{deck.title}</CardTitle>
               <p className="mt-2 text-sm text-muted">

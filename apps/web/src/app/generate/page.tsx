@@ -7,6 +7,8 @@ import axios from 'axios';
 import { api } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, toSelectOptions } from '@/components/ui/select';
+import { HSK_LEVEL_OPTIONS } from '@/lib/select-options';
 import { Card, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/layout/page-header';
 import { HskLevel, TOPICS } from '@linguaflow/shared';
@@ -53,17 +55,11 @@ export default function GeneratePage() {
           <div className="mt-4 space-y-4">
             <div>
               <label className="mb-1 block text-sm">Chủ đề</label>
-              <select
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
+              <Select
                 value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-              >
-                {TOPICS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                onChange={setTopic}
+                options={toSelectOptions([...TOPICS])}
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm">Hoặc chủ đề tùy chỉnh</label>
@@ -75,17 +71,11 @@ export default function GeneratePage() {
             </div>
             <div>
               <label className="mb-1 block text-sm">Trình độ HSK</label>
-              <select
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
+              <Select
                 value={hskLevel}
-                onChange={(e) => setHskLevel(e.target.value as HskLevel)}
-              >
-                {Object.values(HskLevel).map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setHskLevel(v as HskLevel)}
+                options={HSK_LEVEL_OPTIONS}
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm">Số lượng từ ({count})</label>

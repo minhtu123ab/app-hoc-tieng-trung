@@ -3,12 +3,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/contexts/auth-context';
+import { useConfirm } from '@/contexts/confirm-context';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { TUTOR_ROLE_OPTIONS } from '@/lib/select-options';
 import { cn } from '@/lib/utils';
 import { TutorMarkdown } from '@/components/tutor/tutor-markdown';
 import { PageHeader } from '@/components/layout/page-header';
+import { Toolbar } from '@/components/ui/toolbar';
 import { Lightbulb, MessageCircle, BookOpen, History } from 'lucide-react';
 
 interface Message {
@@ -49,6 +53,7 @@ export default function TutorPage() {
   const [askAnswer, setAskAnswer] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
 
   const { data: threads } = useQuery<ThreadInfo[]>({
     queryKey: ['tutor-threads'],
@@ -128,27 +133,33 @@ export default function TutorPage() {
     <div className="w-full space-y-6">
       <PageHeader title="Gia sư AI" description="Hỏi ngữ pháp hoặc luyện hội thoại" />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          className="rounded-lg border border-border px-3 py-1.5 text-sm"
+      <Toolbar>
+        <Select
+          className="min-w-[12rem] flex-1 sm:max-w-xs"
           value={threadId}
-          onChange={(e) => setThreadId(e.target.value)}
-        >
-          <option value="main">Hội thoại chính</option>
-          {threads?.map((t) => (
-            <option key={t.threadId} value={t.threadId}>
-              {t.preview.slice(0, 40) || t.threadId.slice(0, 8)}
-            </option>
-          ))}
-        </select>
+          onChange={setThreadId}
+          options={[
+            { value: 'main', label: 'Hội thoại chính' },
+            ...(threads?.map((t) => ({
+              value: t.threadId,
+              label: t.preview.slice(0, 40) || t.threadId.slice(0, 8),
+            })) ?? []),
+          ]}
+        />
         <Button variant="outline" size="sm" onClick={() => newThreadMutation.mutate()}>
           + Cuộc mới
         </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => {
-            if (confirm('Xóa lịch sử cuộc hội thoại này?')) clearHistoryMutation.mutate();
+          onClick={async () => {
+            const ok = await confirm({
+              title: 'Xóa lịch sử',
+              message: 'Xóa lịch sử cuộc hội thoại này?',
+              confirmLabel: 'Xóa',
+              variant: 'destructive',
+            });
+            if (ok) clearHistoryMutation.mutate();
           }}
         >
           Xóa lịch sử
@@ -158,7 +169,7 @@ export default function TutorPage() {
           size="sm"
           onClick={() => setTab('ask')}
         >
-          <BookOpen className="mr-1.5 h-4 w-4" />
+          <BookOpen className="h-4 w-4" />
           Giải thích
         </Button>
         <Button
@@ -166,10 +177,10 @@ export default function TutorPage() {
           size="sm"
           onClick={() => setTab('chat')}
         >
-          <MessageCircle className="mr-1.5 h-4 w-4" />
+          <MessageCircle className="h-4 w-4" />
           Hội thoại
         </Button>
-      </div>
+      </Toolbar>
 
       <div className="grid gap-6 lg:grid-cols-12 xl:gap-8">
         <div className="space-y-4 lg:col-span-8">
@@ -180,15 +191,16 @@ export default function TutorPage() {
                 <p className="mt-1 text-sm text-muted">
                   Đặt câu hỏi ngữ pháp, từ vựng hoặc cách dùng từ — trả lời bằng tiếng Việt
                 </p>
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Input
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
                     placeholder="Nhập câu hỏi..."
-                    className="flex-1"
+                    className="min-w-0 flex-1"
                     onKeyDown={(e) => e.key === 'Enter' && question && askMutation.mutate()}
                   />
                   <Button
+                    className="shrink-0 sm:w-auto"
                     onClick={() => askMutation.mutate()}
                     disabled={!question || askMutation.isPending}
                   >
@@ -208,18 +220,14 @@ export default function TutorPage() {
             </>
           ) : (
             <Card>
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <label className="text-sm font-medium">Vai trò AI</label>
-                <select
-                  className="rounded-lg border border-border bg-card-solid px-3 py-1.5 text-sm"
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <label className="shrink-0 text-sm font-medium">Vai trò AI</label>
+                <Select
+                  className="min-w-[10rem] flex-1 sm:flex-none"
                   value={role}
-                  onChange={(e) => setRole(e.target.value as typeof role)}
-                >
-                  <option value="teacher">Giáo viên</option>
-                  <option value="friend">Bạn bè</option>
-                  <option value="customer">Khách hàng</option>
-                  <option value="shopkeeper">Người bán hàng</option>
-                </select>
+                  onChange={(v) => setRole(v as typeof role)}
+                  options={TUTOR_ROLE_OPTIONS}
+                />
               </div>
 
               <div className="min-h-[20rem] max-h-[32rem] space-y-3 overflow-y-auto rounded-xl border border-border bg-slate-50/50 p-4 xl:min-h-[24rem]">
@@ -248,15 +256,16 @@ export default function TutorPage() {
                 <div ref={bottomRef} />
               </div>
 
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Input
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Nhập tin nhắn tiếng Trung hoặc Việt..."
-                  className="flex-1"
+                  className="min-w-0 flex-1"
                   onKeyDown={(e) => e.key === 'Enter' && message && chatMutation.mutate()}
                 />
                 <Button
+                  className="shrink-0 sm:w-auto"
                   onClick={() => chatMutation.mutate()}
                   disabled={!message || chatMutation.isPending}
                 >

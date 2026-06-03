@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AuthProvider } from '@/contexts/auth-context';
+import { ConfirmProvider } from '@/contexts/confirm-context';
 import { AppShell } from '@/components/layout/app-shell';
 import { TtsInit } from '@/components/tts-init';
 
@@ -17,8 +18,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TtsInit />
-        <AppShell>{children}</AppShell>
+        <ConfirmProvider>
+          <TtsInit />
+          <AppShell>{children}</AppShell>
+        </ConfirmProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

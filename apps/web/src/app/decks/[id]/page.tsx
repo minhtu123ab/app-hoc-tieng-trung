@@ -5,8 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { api } from '@/contexts/auth-context';
+import { useConfirm } from '@/contexts/confirm-context';
 import { Card, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, ButtonLink } from '@/components/ui/button';
+import { Toolbar } from '@/components/ui/toolbar';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/layout/page-header';
 import { PageSkeleton, ErrorRetry } from '@/components/ui/states';
@@ -18,6 +20,7 @@ export default function DeckDetailPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const id = params.id as string;
   const [flipped, setFlipped] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
@@ -75,42 +78,48 @@ export default function DeckDetailPage() {
         title={deck.title}
         description={`${deck.topic} · ${deck.hskLevel} · ${deck.words.length} từ`}
         action={
-          <Link href="/decks">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="mr-1 h-4 w-4" /> Danh sách
-            </Button>
-          </Link>
+          <ButtonLink href="/decks" variant="outline" size="sm">
+            <ArrowLeft className="h-4 w-4" />
+            Danh sách
+          </ButtonLink>
         }
       />
 
-      <div className="flex flex-wrap gap-2">
-        <Link href={`/practice?deckId=${id}`}>
-          <Button>
-            <Dumbbell className="mr-2 h-4 w-4" />
-            Luyện deck này
-          </Button>
-        </Link>
+      <Toolbar>
+        <ButtonLink href={`/practice?deckId=${id}`}>
+          <Dumbbell className="h-4 w-4" />
+          Luyện deck này
+        </ButtonLink>
         <Button variant="outline" onClick={exportDeck}>
-          <Download className="mr-2 h-4 w-4" />
+          <Download className="h-4 w-4" />
           Export JSON
         </Button>
-        <Button variant="outline" onClick={() => {
-          setTitle(deck.title);
-          setTopic(deck.topic);
-          setEditing(!editing);
-        }}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setTitle(deck.title);
+            setTopic(deck.topic);
+            setEditing(!editing);
+          }}
+        >
           Đổi tên
         </Button>
         <Button
           variant="destructive"
-          onClick={() => {
-            if (confirm('Xóa bộ từ này? Không hoàn tác.')) deleteMutation.mutate();
+          onClick={async () => {
+            const ok = await confirm({
+              title: 'Xóa bộ từ',
+              message: 'Xóa bộ từ này? Hành động không thể hoàn tác.',
+              confirmLabel: 'Xóa',
+              variant: 'destructive',
+            });
+            if (ok) deleteMutation.mutate();
           }}
         >
-          <Trash2 className="mr-2 h-4 w-4" />
+          <Trash2 className="h-4 w-4" />
           Xóa deck
         </Button>
-      </div>
+      </Toolbar>
 
       {editing && (
         <Card className="max-w-md space-y-2">
