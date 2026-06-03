@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TutorMarkdown } from '@/components/tutor/tutor-markdown';
 import { PageHeader } from '@/components/layout/page-header';
+import { Lightbulb, MessageCircle, BookOpen, History } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -16,6 +17,22 @@ interface Message {
   content: string;
   createdAt: string;
 }
+
+const SAMPLE_QUESTIONS = [
+  'Khác nhau giữa 会 (huì) và 能 (néng)?',
+  'Tại sao dùng 被 (bèi) trong câu bị động?',
+  'Cách dùng 了 (le) và 过 (guo)?',
+  '什么时候用 在 vs 正在?',
+  'Giải thích 把 (bǎ) cấu trúc',
+  'Cách hỏi thời gian với 几点?',
+];
+
+const CHAT_STARTERS = [
+  '你好！我想练习点菜。',
+  'Nǐ hǎo, wǒ xiǎng liànxí mǎi dōngxi.',
+  '今天天气怎么样？',
+  '请问，这个多少钱？',
+];
 
 export default function TutorPage() {
   const [tab, setTab] = useState<'ask' | 'chat'>('ask');
@@ -33,6 +50,11 @@ export default function TutorPage() {
       return data;
     },
   });
+
+  const recentUserQuestions = (history ?? [])
+    .filter((m) => m.role === 'USER')
+    .slice(-5)
+    .reverse();
 
   const askMutation = useMutation({
     mutationFn: async () => {
@@ -59,10 +81,12 @@ export default function TutorPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [history]);
+  }, [history, askAnswer]);
+
+  const suggestions = tab === 'ask' ? SAMPLE_QUESTIONS : CHAT_STARTERS;
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
+    <div className="w-full space-y-6">
       <PageHeader title="Gia sư AI" description="Hỏi ngữ pháp hoặc luyện hội thoại" />
 
       <div className="flex gap-2">
@@ -71,6 +95,7 @@ export default function TutorPage() {
           size="sm"
           onClick={() => setTab('ask')}
         >
+          <BookOpen className="mr-1.5 h-4 w-4" />
           Giải thích
         </Button>
         <Button
@@ -78,89 +103,175 @@ export default function TutorPage() {
           size="sm"
           onClick={() => setTab('chat')}
         >
+          <MessageCircle className="mr-1.5 h-4 w-4" />
           Hội thoại
         </Button>
       </div>
 
-      {tab === 'ask' ? (
-        <Card className="mt-4">
-          <CardTitle>Hỏi gia sư</CardTitle>
-          <p className="mt-1 text-sm text-muted">
-            Ví dụ: Khác nhau giữa 会 và 能? Tại sao dùng 被?
-          </p>
-          <div className="mt-4 flex gap-2">
-            <Input
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Nhập câu hỏi..."
-              onKeyDown={(e) => e.key === 'Enter' && askMutation.mutate()}
-            />
-            <Button
-              onClick={() => askMutation.mutate()}
-              disabled={!question || askMutation.isPending}
-            >
-              Hỏi
-            </Button>
-          </div>
-          {askAnswer && (
-            <div className="mt-4 rounded-xl border border-border bg-card-solid p-4 shadow-sm">
-              <TutorMarkdown content={askAnswer} />
-            </div>
-          )}
-        </Card>
-      ) : (
-        <Card className="mt-4">
-          <div className="mb-4">
-            <label className="text-sm">Vai trò AI</label>
-            <select
-              className="ml-2 rounded border border-border px-2 py-1 text-sm"
-              value={role}
-              onChange={(e) => setRole(e.target.value as typeof role)}
-            >
-              <option value="teacher">Giáo viên</option>
-              <option value="friend">Bạn bè</option>
-              <option value="customer">Khách hàng</option>
-              <option value="shopkeeper">Người bán hàng</option>
-            </select>
-          </div>
+      <div className="grid gap-6 lg:grid-cols-12 xl:gap-8">
+        <div className="space-y-4 lg:col-span-8">
+          {tab === 'ask' ? (
+            <>
+              <Card>
+                <CardTitle>Hỏi gia sư</CardTitle>
+                <p className="mt-1 text-sm text-muted">
+                  Đặt câu hỏi ngữ pháp, từ vựng hoặc cách dùng từ — trả lời bằng tiếng Việt
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <Input
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    placeholder="Nhập câu hỏi..."
+                    className="flex-1"
+                    onKeyDown={(e) => e.key === 'Enter' && question && askMutation.mutate()}
+                  />
+                  <Button
+                    onClick={() => askMutation.mutate()}
+                    disabled={!question || askMutation.isPending}
+                  >
+                    {askMutation.isPending ? 'Đang trả lời...' : 'Hỏi'}
+                  </Button>
+                </div>
+              </Card>
 
-          <div className="max-h-[28rem] space-y-3 overflow-y-auto xl:max-h-[32rem]">
-            {history?.map((msg) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  'rounded-xl p-3 text-sm',
-                  msg.role === 'USER'
-                    ? 'ml-8 border border-primary/10 bg-primary/5'
-                    : 'mr-8 border border-border bg-card-solid shadow-sm',
-                )}
-              >
-                {msg.role === 'ASSISTANT' ? (
-                  <TutorMarkdown content={msg.content} />
-                ) : (
-                  <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                )}
+              {askAnswer && (
+                <Card>
+                  <CardTitle className="text-base text-muted">Câu trả lời</CardTitle>
+                  <div className="mt-3">
+                    <TutorMarkdown content={askAnswer} />
+                  </div>
+                </Card>
+              )}
+            </>
+          ) : (
+            <Card>
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <label className="text-sm font-medium">Vai trò AI</label>
+                <select
+                  className="rounded-lg border border-border bg-card-solid px-3 py-1.5 text-sm"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as typeof role)}
+                >
+                  <option value="teacher">Giáo viên</option>
+                  <option value="friend">Bạn bè</option>
+                  <option value="customer">Khách hàng</option>
+                  <option value="shopkeeper">Người bán hàng</option>
+                </select>
               </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
 
-          <div className="mt-4 flex gap-2">
-            <Input
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Nhập tin nhắn tiếng Trung hoặc Việt..."
-              onKeyDown={(e) => e.key === 'Enter' && chatMutation.mutate()}
-            />
-            <Button
-              onClick={() => chatMutation.mutate()}
-              disabled={!message || chatMutation.isPending}
-            >
-              Gửi
-            </Button>
-          </div>
-        </Card>
-      )}
+              <div className="min-h-[20rem] max-h-[32rem] space-y-3 overflow-y-auto rounded-xl border border-border bg-slate-50/50 p-4 xl:min-h-[24rem]">
+                {!history?.length && (
+                  <p className="py-8 text-center text-sm text-muted">
+                    Chưa có hội thoại. Gửi tin nhắn đầu tiên hoặc chọn gợi ý bên phải.
+                  </p>
+                )}
+                {history?.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      'rounded-xl p-3 text-sm',
+                      msg.role === 'USER'
+                        ? 'ml-6 border border-primary/10 bg-primary/5'
+                        : 'mr-6 border border-border bg-card-solid shadow-sm',
+                    )}
+                  >
+                    {msg.role === 'ASSISTANT' ? (
+                      <TutorMarkdown content={msg.content} />
+                    ) : (
+                      <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    )}
+                  </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <Input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Nhập tin nhắn tiếng Trung hoặc Việt..."
+                  className="flex-1"
+                  onKeyDown={(e) => e.key === 'Enter' && message && chatMutation.mutate()}
+                />
+                <Button
+                  onClick={() => chatMutation.mutate()}
+                  disabled={!message || chatMutation.isPending}
+                >
+                  Gửi
+                </Button>
+              </div>
+            </Card>
+          )}
+        </div>
+
+        <aside className="space-y-4 lg:col-span-4">
+          <Card>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Lightbulb className="h-5 w-5 text-amber-600" />
+              {tab === 'ask' ? 'Gợi ý câu hỏi' : 'Mở lời hội thoại'}
+            </CardTitle>
+            <p className="mt-1 text-xs text-muted">Bấm để điền nhanh vào ô nhập</p>
+            <div className="mt-3 flex flex-col gap-2">
+              {suggestions.map((text) => (
+                <button
+                  key={text}
+                  type="button"
+                  onClick={() => (tab === 'ask' ? setQuestion(text) : setMessage(text))}
+                  className="rounded-lg border border-border bg-slate-50 px-3 py-2.5 text-left text-sm transition-colors hover:border-primary/30 hover:bg-red-50/50"
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {recentUserQuestions.length > 0 && (
+            <Card>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <History className="h-5 w-5 text-primary" />
+                Câu hỏi gần đây
+              </CardTitle>
+              <ul className="mt-3 space-y-2">
+                {recentUserQuestions.map((msg) => (
+                  <li key={msg.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (tab === 'ask') setQuestion(msg.content);
+                        else setMessage(msg.content);
+                      }}
+                      className="w-full rounded-lg px-2 py-2 text-left text-sm text-muted transition-colors hover:bg-slate-50 hover:text-foreground"
+                    >
+                      {msg.content.length > 60
+                        ? `${msg.content.slice(0, 60)}…`
+                        : msg.content}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          <Card className="border-primary/10 bg-gradient-to-br from-red-50/50 to-amber-50/30">
+            <CardTitle className="text-base">Cách dùng hiệu quả</CardTitle>
+            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-muted">
+              {tab === 'ask' ? (
+                <>
+                  <li>• Hỏi cụ thể một điểm ngữ pháp mỗi lần.</li>
+                  <li>• Kèm ví dụ câu tiếng Trung nếu cần giải thích sâu.</li>
+                  <li>• Sau khi hiểu, sang <strong className="text-foreground">Luyện tập</strong> để nhớ lâu.</li>
+                </>
+              ) : (
+                <>
+                  <li>• Cố gắng trả lời bằng tiếng Trung, AI sẽ sửa nhẹ.</li>
+                  <li>• Đổi vai trò để luyện tình huống khác nhau.</li>
+                  <li>• Hội thoại lưu lịch sử — quay lại ôn các mẫu câu hay.</li>
+                </>
+              )}
+            </ul>
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 }
