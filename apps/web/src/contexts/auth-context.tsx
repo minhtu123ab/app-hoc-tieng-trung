@@ -53,14 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Chỉ bootstrap auth một lần khi mở app — không refetch /auth/me mỗi lần đổi tab
   useEffect(() => {
     let cancelled = false;
 
-    const init = async () => {
+    const bootstrap = async () => {
       const { accessToken } = loadTokens();
-      const isPublic = isPublicPath(pathname);
 
-      if (isPublic) {
+      if (isPublicPath(pathname)) {
         if (!cancelled) setLoading(false);
         return;
       }
@@ -88,15 +88,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    if (!isPublicPath(pathname)) {
-      setLoading(true);
-    }
-    init();
+    bootstrap();
 
     return () => {
       cancelled = true;
     };
-  }, [pathname, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy lúc mount
+  }, []);
+
+  // Đổi route: chỉ chặn nếu mất token, không bật loading toàn màn hình
+  useEffect(() => {
+    if (loading) return;
+    if (isPublicPath(pathname)) return;
+
+    const { accessToken } = loadTokens();
+    if (!accessToken) {
+      setUser(null);
+      router.replace('/login');
+    }
+  }, [pathname, loading, router]);
 
   const logout = useCallback(() => {
     clearTokens();
