@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseEnumPipe,
   Post,
   Query,
   Req,
@@ -10,26 +11,17 @@ import {
 } from '@nestjs/common';
 import { PracticeService } from './practice.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { GradePracticeDto } from '../common/dtos';
+import {
+  EndPracticeSessionDto,
+  GradePracticeDto,
+  StartPracticeSessionDto,
+} from '../common/dtos';
 import { PracticeMode } from '@linguaflow/shared';
 
 @Controller('practice')
 @UseGuards(JwtAuthGuard)
 export class PracticeController {
   constructor(private practiceService: PracticeService) {}
-
-  @Get(':mode')
-  getQuestions(
-    @Req() req: { user: { userId: string } },
-    @Param('mode') mode: PracticeMode,
-    @Query('limit') limit?: string,
-  ) {
-    return this.practiceService.getQuestions(
-      req.user.userId,
-      mode,
-      limit ? Math.min(Math.max(parseInt(limit, 10) || 10, 1), 500) : 10,
-    );
-  }
 
   @Post('grade')
   grade(
@@ -42,22 +34,40 @@ export class PracticeController {
   @Post('session/start')
   startSession(
     @Req() req: { user: { userId: string } },
-    @Body('mode') mode: PracticeMode,
+    @Body() dto: StartPracticeSessionDto,
   ) {
-    return this.practiceService.startSession(req.user.userId, mode);
+    return this.practiceService.startSession(req.user.userId, dto.mode);
   }
 
   @Post('session/:id/end')
   endSession(
     @Req() req: { user: { userId: string } },
     @Param('id') id: string,
-    @Body() body: { total: number; correct: number },
+    @Body() dto: EndPracticeSessionDto,
   ) {
     return this.practiceService.endSession(
       id,
       req.user.userId,
-      body.total,
-      body.correct,
+      dto.total,
+      dto.correct,
+    );
+  }
+
+  @Get(':mode')
+  getQuestions(
+    @Req() req: { user: { userId: string } },
+    @Param('mode', new ParseEnumPipe(PracticeMode)) mode: PracticeMode,
+    @Query('limit') limit?: string,
+    @Query('deckId') deckId?: string,
+  ) {
+    const parsedLimit = limit
+      ? Math.min(Math.max(parseInt(limit, 10) || 10, 1), 500)
+      : 10;
+    return this.practiceService.getQuestions(
+      req.user.userId,
+      mode,
+      parsedLimit,
+      deckId,
     );
   }
 }

@@ -64,10 +64,8 @@ export class SrsService {
       status = WordStatus.FORGETTING;
     } else if (repetitions >= 5 && intervalDays >= 21) {
       status = WordStatus.MASTERED;
-    } else if (repetitions >= 1) {
-      status = WordStatus.LEARNING;
     } else {
-      status = WordStatus.NEW;
+      status = WordStatus.LEARNING;
     }
 
     return { easeFactor, intervalDays, repetitions, dueDate, status };

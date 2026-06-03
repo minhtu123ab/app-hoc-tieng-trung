@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -68,6 +69,8 @@ const modes = [
 ];
 
 export default function PracticeIndexPage() {
+  const searchParams = useSearchParams();
+  const deckId = searchParams.get('deckId');
   const [wordCount, setWordCount] = useState(10);
 
   useEffect(() => {
@@ -82,7 +85,11 @@ export default function PracticeIndexPage() {
     <div className="w-full space-y-6 xl:space-y-8">
       <PageHeader
         title="Luyện tập"
-        description="Chọn chế độ và số từ mỗi phiên luyện tập"
+        description={
+          deckId
+            ? 'Luyện theo bộ từ đã chọn — chọn chế độ bên dưới'
+            : 'Chọn chế độ và số từ mỗi phiên luyện tập'
+        }
       />
 
       <Card className="w-full">
@@ -126,7 +133,10 @@ export default function PracticeIndexPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {modes.map(({ mode, title, desc, icon: Icon, color }) => (
-          <Link key={mode} href={`/practice/${mode}?limit=${wordCount}`}>
+          <Link
+            key={mode}
+            href={`/practice/${mode}?limit=${wordCount}${deckId ? `&deckId=${deckId}` : ''}`}
+          >
             <Card className="flex h-full min-h-[10.5rem] flex-col p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
               <div className="flex items-start gap-4">
                 <div className={cn('rounded-xl p-3', color)}>

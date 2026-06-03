@@ -6,7 +6,7 @@ import {
   WordDto,
   HskLevel,
 } from '@linguaflow/shared';
-import { GenerateVocabDto } from '../common/dtos';
+import { CreateDeckDto, GenerateVocabDto, UpdateDeckDto } from '../common/dtos';
 
 @Injectable()
 export class DecksService {
@@ -78,6 +78,101 @@ export class DecksService {
       include: { words: true, _count: { select: { words: true } } },
     });
     if (!deck) throw new NotFoundException('Deck không tồn tại');
+    return {
+      ...this.toDeckDto(deck),
+      words: deck.words.map((w) => this.toWordDto(w)),
+    };
+  }
+
+  async create(userId: string, dto: CreateDeckDto): Promise<DeckDto> {
+    const deck = await this.prisma.deck.create({
+      data: {
+        userId,
+        title: dto.title,
+        topic: dto.topic,
+        hskLevel: dto.hskLevel,
+        source: 'MANUAL',
+      },
+      include: { _count: { select: { words: true } } },
+    });
+    return this.toDeckDto(deck);
+  }
+
+  async update(userId: string, id: string, dto: UpdateDeckDto): Promise<DeckDto> {
+    const deck = await this.prisma.deck.findFirst({ where: { id, userId } });
+    if (!deck) throw new NotFoundException('Deck không tồn tại');
+    const updated = await this.prisma.deck.update({
+      where: { id },
+      data: {
+        ...(dto.title !== undefined ? { title: dto.title } : {}),
+        ...(dto.topic !== undefined ? { topic: dto.topic } : {}),
+        ...(dto.hskLevel !== undefined ? { hskLevel: dto.hskLevel } : {}),
+      },
+      include: { _count: { select: { words: true } } },
+    });
+    return this.toDeckDto(updated);
+  }
+
+  async exportDeck(userId: string, id: string) {
+    const deck = await this.findOne(userId, id);
+    return {
+      title: deck.title,
+      topic: deck.topic,
+      hskLevel: deck.hskLevel,
+      source: deck.source,
+      words: deck.words,
+    };
+  }
+
+  async importDeck(
+    userId: string,
+    payload: {
+      title: string;
+      topic: string;
+      hskLevel: HskLevel;
+      words: Array<{
+        hanzi: string;
+        pinyin: string;
+        meaningVi: string;
+        partOfSpeech?: string | null;
+        exampleHanzi?: string | null;
+        examplePinyin?: string | null;
+        exampleVi?: string | null;
+        hskLevel?: HskLevel;
+      }>;
+    },
+  ) {
+    const deck = await this.prisma.deck.create({
+      data: {
+        userId,
+        title: payload.title,
+        topic: payload.topic,
+        hskLevel: payload.hskLevel,
+        source: 'MANUAL',
+        words: {
+          create: payload.words.map((w) => ({
+            hanzi: w.hanzi,
+            pinyin: w.pinyin,
+            meaningVi: w.meaningVi,
+            partOfSpeech: w.partOfSpeech ?? null,
+            exampleHanzi: w.exampleHanzi ?? null,
+            examplePinyin: w.examplePinyin ?? null,
+            exampleVi: w.exampleVi ?? null,
+            hskLevel: w.hskLevel ?? payload.hskLevel,
+          })),
+        },
+      },
+      include: { words: true, _count: { select: { words: true } } },
+    });
+
+    for (const word of deck.words) {
+      await this.prisma.userWordProgress.upsert({
+        where: { userId_wordId: { userId, wordId: word.id } },
+        create: { userId, wordId: word.id, status: 'NEW', dueDate: new Date() },
+        update: {},
+      });
+    }
+
     return {
       ...this.toDeckDto(deck),
       words: deck.words.map((w) => this.toWordDto(w)),

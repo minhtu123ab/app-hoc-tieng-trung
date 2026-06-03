@@ -56,6 +56,7 @@ model User {
   passwordHash   String
   name           String
   hskLevel       HskLevel @default(HSK1)
+  dailyGoal      Int      @default(20)
   streakCount    Int      @default(0)
   lastStudyDate  DateTime?
   createdAt      DateTime @default(now())
@@ -148,11 +149,23 @@ model PracticeSession {
 model TutorMessage {
   id        String    @id @default(cuid())
   userId    String
+  threadId  String    @default("main")
   role      TutorRole
   content   String
   createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, threadId])
+}
+
+model WordFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  wordId    String
+  isHard    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, wordId])
   @@index([userId])
 }

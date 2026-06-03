@@ -7,12 +7,12 @@ import { api } from '@/contexts/auth-context';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
+import { PageSkeleton, ErrorRetry } from '@/components/ui/states';
 import type { UserWordProgressDto, StatsOverview } from '@linguaflow/shared';
 import { ReviewRating, WordStatus } from '@linguaflow/shared';
 import { speakChinese } from '@/lib/tts';
 import { wordStatusLabel } from '@/lib/word-status';
-import { Volume2, Brain, Lightbulb, ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Volume2, Brain, Lightbulb, CheckCircle2 } from 'lucide-react';
 
 const STATUS_LEGEND = [
   WordStatus.NEW,
@@ -24,9 +24,16 @@ const STATUS_LEGEND = [
 export default function ReviewPage() {
   const [index, setIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [reviewedCount, setReviewedCount] = useState(0);
+  const [sessionDone, setSessionDone] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: dueWords, isLoading } = useQuery<UserWordProgressDto[]>({
+  const {
+    data: dueWords,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<UserWordProgressDto[]>({
     queryKey: ['srs-due'],
     queryFn: async () => {
       const { data } = await api.get('/srs/due');
@@ -54,17 +61,27 @@ export default function ReviewPage() {
       queryClient.invalidateQueries({ queryKey: ['srs-due'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
       setShowAnswer(false);
-      if (index < (dueWords?.length ?? 1) - 1) {
-        setIndex(index + 1);
+      setReviewedCount((c) => c + 1);
+      if (index >= (dueWords?.length ?? 1) - 1) {
+        setSessionDone(true);
       } else {
-        setIndex(0);
+        setIndex(index + 1);
       }
+    },
+    onError: () => {
+      /* error shown via isError */
     },
   });
 
-  if (isLoading) return <div className="text-muted">Đang tải...</div>;
+  if (isLoading) return <PageSkeleton />;
+  if (error) {
+    return (
+      <ErrorRetry message="Không tải được danh sách ôn tập" onRetry={() => refetch()} />
+    );
+  }
 
-  if (!dueWords?.length) {
+  if (sessionDone || !dueWords?.length) {
+    const empty = !dueWords?.length && !sessionDone;
     return (
       <div className="w-full space-y-6">
         <PageHeader
@@ -73,16 +90,30 @@ export default function ReviewPage() {
         />
         <Card className="mx-auto max-w-lg py-12 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10">
-            <Brain className="h-8 w-8 text-emerald-600" />
+            {sessionDone ? (
+              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+            ) : (
+              <Brain className="h-8 w-8 text-emerald-600" />
+            )}
           </div>
-          <CardTitle>Hoàn thành hôm nay!</CardTitle>
-          <p className="mt-2 text-muted">Không có từ nào cần ôn. Quay lại sau hoặc học từ mới.</p>
+          <CardTitle>
+            {sessionDone
+              ? `Đã ôn ${reviewedCount} từ!`
+              : empty
+                ? 'Hoàn thành hôm nay!'
+                : 'Hoàn thành phiên ôn'}
+          </CardTitle>
+          <p className="mt-2 text-muted">
+            {sessionDone
+              ? `Chuỗi ngày: ${stats?.streakCount ?? 0}. Quay lại sau hoặc luyện thêm.`
+              : 'Không có từ nào cần ôn. Quay lại sau hoặc học từ mới.'}
+          </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <Link href="/generate">
-              <Button variant="outline">Sinh từ AI</Button>
-            </Link>
             <Link href="/practice">
               <Button>Luyện tập</Button>
+            </Link>
+            <Link href="/generate">
+              <Button variant="outline">Sinh từ AI</Button>
             </Link>
           </div>
         </Card>
@@ -93,16 +124,6 @@ export default function ReviewPage() {
   const current = dueWords[index];
   const word = current.word!;
   const progress = ((index + 1) / dueWords.length) * 100;
-
-  const goPrev = () => {
-    setShowAnswer(false);
-    setIndex((i) => Math.max(0, i - 1));
-  };
-
-  const goNext = () => {
-    setShowAnswer(false);
-    setIndex((i) => Math.min(dueWords.length - 1, i + 1));
-  };
 
   return (
     <div className="w-full space-y-6">
@@ -116,10 +137,15 @@ export default function ReviewPage() {
           <div className="flex items-center justify-between gap-4 text-sm">
             <span className="font-medium text-foreground">
               Từ {index + 1} / {dueWords.length}
+              {reviewedCount > 0 && (
+                <span className="ml-2 text-muted">· Đã ôn {reviewedCount}</span>
+              )}
             </span>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-muted">
               Trạng thái:{' '}
-              <strong className="text-foreground">{wordStatusLabel(current.status)}</strong>
+              <strong className="text-foreground">
+                {wordStatusLabel(current.status)}
+              </strong>
             </span>
           </div>
 
@@ -129,6 +155,12 @@ export default function ReviewPage() {
               style={{ width: `${progress}%` }}
             />
           </div>
+
+          {reviewMutation.isError && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              Lỗi khi lưu đánh giá. Thử lại.
+            </p>
+          )}
 
           <Card className="px-6 py-10 text-center sm:px-10 sm:py-14">
             <div className="flex items-center justify-center gap-3">
@@ -150,7 +182,7 @@ export default function ReviewPage() {
                     )}
                   </div>
                 )}
-                <div className="mt-8 grid grid-cols-2 gap-3 sm:max-w-md sm:mx-auto">
+                <div className="mt-8 grid grid-cols-2 gap-3 sm:mx-auto sm:max-w-md">
                   <Button
                     variant="destructive"
                     size="lg"
@@ -191,19 +223,9 @@ export default function ReviewPage() {
             )}
           </Card>
 
-          <div className="flex justify-between">
-            <Button variant="outline" size="sm" onClick={goPrev} disabled={index === 0}>
-              <ChevronLeft className="mr-1 h-4 w-4" /> Từ trước
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goNext}
-              disabled={index >= dueWords.length - 1}
-            >
-              Từ sau <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
+          <p className="text-center text-xs text-muted">
+            Chỉ chuyển từ sau khi bạn đánh giá (Quên / Khó / Đúng / Dễ) — tránh sai lịch SRS.
+          </p>
         </div>
 
         <aside className="space-y-4 lg:col-span-4">
@@ -243,10 +265,9 @@ export default function ReviewPage() {
               Mẹo ôn hiệu quả
             </CardTitle>
             <ul className="mt-3 space-y-2 text-sm leading-relaxed text-muted">
-              <li>• Nhấn <strong className="text-foreground">Quên</strong> nếu không nhớ — từ sẽ ôn lại sớm hơn.</li>
-              <li>• <strong className="text-foreground">Đúng</strong> khi nhớ được nghĩa (không cần nhớ pinyin).</li>
-              <li>• <strong className="text-foreground">Dễ</strong> khi quá dễ — khoảng cách ôn sẽ dài hơn.</li>
-              <li>• Ôn hết danh sách mỗi ngày trước khi luyện tập mới.</li>
+              <li>• Nhấn <strong className="text-foreground">Quên</strong> nếu không nhớ.</li>
+              <li>• <strong className="text-foreground">Đúng</strong> khi nhớ được nghĩa.</li>
+              <li>• <strong className="text-foreground">Dễ</strong> khi quá dễ — ôn xa hơn.</li>
             </ul>
           </Card>
         </aside>

@@ -20,6 +20,7 @@ import {
   PanelLeftOpen,
   X,
   Menu,
+  Settings,
 } from 'lucide-react';
 
 const navItems = [
@@ -30,6 +31,7 @@ const navItems = [
   { href: '/practice', label: 'Luyện tập', icon: Dumbbell },
   { href: '/tutor', label: 'Gia sư AI', icon: MessageCircle },
   { href: '/stats', label: 'Thống kê', icon: BarChart3 },
+  { href: '/settings', label: 'Cài đặt', icon: Settings },
   { href: '/guide', label: 'Hướng dẫn', icon: CircleHelp },
 ];
 
@@ -150,7 +152,10 @@ function SidebarContent({
       <div className="border-t border-sidebar-border p-3">
         {!collapsed ? (
           <div className="rounded-xl bg-white/5 p-3">
-            <div className="flex items-center gap-3">
+            <Link
+              href="/settings"
+              className="flex items-center gap-3 rounded-lg transition-colors hover:bg-white/5"
+            >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-sm font-bold text-white">
                 {user.name.charAt(0).toUpperCase()}
               </div>
@@ -158,7 +163,7 @@ function SidebarContent({
                 <p className="truncate text-sm font-medium text-white">{user.name}</p>
                 <p className="truncate text-xs text-white/50">{user.hskLevel}</p>
               </div>
-            </div>
+            </Link>
             <button
               type="button"
               onClick={onLogout}

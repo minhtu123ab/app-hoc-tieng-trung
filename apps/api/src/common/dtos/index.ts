@@ -4,6 +4,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Max,
   Min,
   MinLength,
 } from 'class-validator';
@@ -46,7 +47,74 @@ export class GenerateVocabDto {
 
   @IsInt()
   @Min(1)
+  @Max(100)
   count!: number;
+}
+
+export class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @IsOptional()
+  @IsEnum(HskLevel)
+  hskLevel?: HskLevel;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  dailyGoal?: number;
+}
+
+export class ChangePasswordDto {
+  @IsString()
+  currentPassword!: string;
+
+  @IsString()
+  @MinLength(6)
+  newPassword!: string;
+}
+
+export class CreateDeckDto {
+  @IsString()
+  title!: string;
+
+  @IsString()
+  topic!: string;
+
+  @IsEnum(HskLevel)
+  hskLevel!: HskLevel;
+}
+
+export class UpdateDeckDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  topic?: string;
+
+  @IsOptional()
+  @IsEnum(HskLevel)
+  hskLevel?: HskLevel;
+}
+
+export class StartPracticeSessionDto {
+  @IsEnum(PracticeMode)
+  mode!: PracticeMode;
+}
+
+export class EndPracticeSessionDto {
+  @IsInt()
+  @Min(0)
+  total!: number;
+
+  @IsInt()
+  @Min(0)
+  correct!: number;
 }
 
 export class ReviewDto {

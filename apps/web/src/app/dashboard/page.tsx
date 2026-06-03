@@ -7,13 +7,14 @@ import { useAuth } from '@/contexts/auth-context';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { StatsOverview } from '@linguaflow/shared';
-import { Brain, Flame, BookMarked, TrendingUp, ArrowRight, Sparkles } from 'lucide-react';
+import { Brain, Flame, BookMarked, TrendingUp, ArrowRight, Sparkles, Target } from 'lucide-react';
+import { PageSkeleton } from '@/components/ui/states';
 import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { user } = useAuth();
 
-  const { data: stats } = useQuery<StatsOverview>({
+  const { data: stats, isLoading } = useQuery<StatsOverview>({
     queryKey: ['stats'],
     queryFn: async () => {
       const { data } = await api.get('/stats/overview');
@@ -22,10 +23,17 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
+  const dueCount = stats?.wordsDueNow ?? stats?.wordsDueToday ?? 0;
+  const goalPct = stats?.dailyGoalProgress ?? 0;
+  const reviewsToday = stats?.reviewsToday ?? 0;
+  const dailyGoal = stats?.dailyGoal ?? user?.dailyGoal ?? 20;
+
+  if (isLoading && user) return <PageSkeleton />;
+
   const cards = [
     {
-      label: 'Cần ôn hôm nay',
-      value: stats?.wordsDueToday ?? 0,
+      label: 'Cần ôn',
+      value: dueCount,
       icon: Brain,
       href: '/review',
       gradient: 'from-rose-500/10 to-red-500/5',
@@ -69,17 +77,45 @@ export default function DashboardPage() {
             Trình độ <span className="rounded-md bg-white/15 px-2 py-0.5 font-semibold">{user?.hskLevel}</span>
             — sẵn sàng học hôm nay?
           </p>
-          {(stats?.wordsDueToday ?? 0) > 0 && (
+          {dueCount > 0 && (
             <Link href="/review">
               <Button variant="accent" size="sm" className="mt-4 gap-2">
                 <Brain className="h-4 w-4" />
-                Ôn {stats?.wordsDueToday} từ ngay
+                Ôn {dueCount} từ ngay
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           )}
         </div>
       </div>
+
+      <Card className="flex flex-col items-center gap-4 p-6 sm:flex-row sm:justify-between">
+        <div className="flex items-center gap-4">
+          <div
+            className="relative flex h-20 w-20 items-center justify-center rounded-full"
+            style={{
+              background: `conic-gradient(#dc2626 ${goalPct}%, #e2e8f0 0)`,
+            }}
+          >
+            <div className="flex h-14 w-14 flex-col items-center justify-center rounded-full bg-card-solid text-center">
+              <Target className="h-4 w-4 text-primary" />
+              <span className="text-xs font-bold">{goalPct}%</span>
+            </div>
+          </div>
+          <div>
+            <p className="font-semibold">Mục tiêu hôm nay</p>
+            <p className="text-sm text-muted">
+              {reviewsToday}/{dailyGoal} lượt ôn/luyện
+            </p>
+            <Link href="/settings" className="text-xs text-primary hover:underline">
+              Đổi mục tiêu
+            </Link>
+          </div>
+        </div>
+        <Link href="/practice">
+          <Button variant="outline">Tiếp tục luyện tập</Button>
+        </Link>
+      </Card>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ label, value, icon: Icon, href, gradient, iconBg }) => (

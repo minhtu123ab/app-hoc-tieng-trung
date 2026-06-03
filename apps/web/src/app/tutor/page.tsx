@@ -34,8 +34,15 @@ const CHAT_STARTERS = [
   '请问，这个多少钱？',
 ];
 
+interface ThreadInfo {
+  threadId: string;
+  preview: string;
+  updatedAt: string;
+}
+
 export default function TutorPage() {
   const [tab, setTab] = useState<'ask' | 'chat'>('ask');
+  const [threadId, setThreadId] = useState('main');
   const [question, setQuestion] = useState('');
   const [message, setMessage] = useState('');
   const [role, setRole] = useState<'teacher' | 'friend' | 'customer' | 'shopkeeper'>('teacher');
@@ -43,10 +50,18 @@ export default function TutorPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
-  const { data: history } = useQuery<Message[]>({
-    queryKey: ['tutor-history'],
+  const { data: threads } = useQuery<ThreadInfo[]>({
+    queryKey: ['tutor-threads'],
     queryFn: async () => {
-      const { data } = await api.get('/tutor/history');
+      const { data } = await api.get('/tutor/threads');
+      return data;
+    },
+  });
+
+  const { data: history } = useQuery<Message[]>({
+    queryKey: ['tutor-history', threadId],
+    queryFn: async () => {
+      const { data } = await api.get('/tutor/history', { params: { threadId } });
       return data;
     },
   });
@@ -56,26 +71,50 @@ export default function TutorPage() {
     .slice(-5)
     .reverse();
 
+  const newThreadMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/tutor/threads');
+      return data.threadId as string;
+    },
+    onSuccess: (id) => {
+      setThreadId(id);
+      queryClient.invalidateQueries({ queryKey: ['tutor-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['tutor-history', id] });
+    },
+  });
+
+  const clearHistoryMutation = useMutation({
+    mutationFn: async () => {
+      await api.delete('/tutor/history', { params: { threadId } });
+    },
+    onSuccess: () => {
+      setAskAnswer('');
+      queryClient.invalidateQueries({ queryKey: ['tutor-history', threadId] });
+    },
+  });
+
   const askMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.post('/tutor/ask', { question });
+      const { data } = await api.post('/tutor/ask', { question }, { params: { threadId } });
       return data.answer as string;
     },
     onSuccess: (answer) => {
       setAskAnswer(answer);
       setQuestion('');
-      queryClient.invalidateQueries({ queryKey: ['tutor-history'] });
+      queryClient.invalidateQueries({ queryKey: ['tutor-history', threadId] });
+      queryClient.invalidateQueries({ queryKey: ['tutor-threads'] });
     },
   });
 
   const chatMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.post('/tutor/chat', { message, role });
+      const { data } = await api.post('/tutor/chat', { message, role }, { params: { threadId } });
       return data.reply as string;
     },
     onSuccess: () => {
       setMessage('');
-      queryClient.invalidateQueries({ queryKey: ['tutor-history'] });
+      queryClient.invalidateQueries({ queryKey: ['tutor-history', threadId] });
+      queryClient.invalidateQueries({ queryKey: ['tutor-threads'] });
     },
   });
 
@@ -89,7 +128,31 @@ export default function TutorPage() {
     <div className="w-full space-y-6">
       <PageHeader title="Gia sư AI" description="Hỏi ngữ pháp hoặc luyện hội thoại" />
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          className="rounded-lg border border-border px-3 py-1.5 text-sm"
+          value={threadId}
+          onChange={(e) => setThreadId(e.target.value)}
+        >
+          <option value="main">Hội thoại chính</option>
+          {threads?.map((t) => (
+            <option key={t.threadId} value={t.threadId}>
+              {t.preview.slice(0, 40) || t.threadId.slice(0, 8)}
+            </option>
+          ))}
+        </select>
+        <Button variant="outline" size="sm" onClick={() => newThreadMutation.mutate()}>
+          + Cuộc mới
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (confirm('Xóa lịch sử cuộc hội thoại này?')) clearHistoryMutation.mutate();
+          }}
+        >
+          Xóa lịch sử
+        </Button>
         <Button
           variant={tab === 'ask' ? 'default' : 'outline'}
           size="sm"

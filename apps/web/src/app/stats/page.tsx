@@ -4,7 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/contexts/auth-context';
 import { Card, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/layout/page-header';
+import { PageSkeleton, EmptyState } from '@/components/ui/states';
 import type { StatsOverview } from '@linguaflow/shared';
+import { PRACTICE_MODE_LABELS, PracticeMode } from '@linguaflow/shared';
 import {
   BarChart,
   Bar,
@@ -18,7 +20,7 @@ import {
 } from 'recharts';
 
 export default function StatsPage() {
-  const { data: stats, isLoading } = useQuery<StatsOverview>({
+  const { data: stats, isLoading, error, refetch } = useQuery<StatsOverview>({
     queryKey: ['stats'],
     queryFn: async () => {
       const { data } = await api.get('/stats/overview');
@@ -26,11 +28,18 @@ export default function StatsPage() {
     },
   });
 
-  if (isLoading) return <div className="text-muted">Đang tải...</div>;
+  if (isLoading) return <PageSkeleton />;
+  if (error) {
+    return (
+      <EmptyState title="Không tải thống kê" action={<button type="button" onClick={() => refetch()}>Thử lại</button>} />
+    );
+  }
 
   const modeData = Object.entries(stats?.accuracyByMode ?? {}).map(
     ([mode, data]) => ({
-      mode: mode.replace(/_/g, ' '),
+      mode:
+        PRACTICE_MODE_LABELS[mode as PracticeMode] ??
+        mode.replace(/_/g, ' '),
       accuracy: data.accuracy,
     }),
   );
@@ -51,14 +60,14 @@ export default function StatsPage() {
           </p>
         </Card>
         <Card>
-          <p className="text-sm text-muted">Đang quên</p>
-          <p className="text-3xl font-bold text-orange-600">
-            {stats?.wordsForgetting ?? 0}
+          <p className="text-sm text-muted">Cần ôn</p>
+          <p className="text-3xl font-bold text-rose-600">
+            {stats?.wordsDueNow ?? stats?.wordsDueToday ?? 0}
           </p>
         </Card>
         <Card>
           <p className="text-sm text-muted">Chuỗi ngày</p>
-          <p className="text-3xl font-bold text-red-600">
+          <p className="text-3xl font-bold text-orange-600">
             {stats?.streakCount ?? 0}
           </p>
         </Card>
@@ -118,6 +127,34 @@ export default function StatsPage() {
           </div>
         </Card>
       </div>
+
+      {stats?.deckStats && stats.deckStats.length > 0 && (
+        <Card>
+          <CardTitle>Tiến độ theo bộ từ</CardTitle>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted">
+                  <th className="py-2 pr-4">Bộ từ</th>
+                  <th className="py-2 pr-4">Tổng</th>
+                  <th className="py-2 pr-4">Đã học</th>
+                  <th className="py-2">Thành thạo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.deckStats.map((d) => (
+                  <tr key={d.deckId} className="border-b border-slate-100">
+                    <td className="py-3 pr-4 font-medium">{d.title}</td>
+                    <td className="py-3 pr-4">{d.wordCount}</td>
+                    <td className="py-3 pr-4">{d.learned}</td>
+                    <td className="py-3">{d.mastered}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

@@ -2,13 +2,19 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthResponse, UserDto } from '@linguaflow/shared';
-import { RegisterDto, LoginDto } from '../common/dtos';
+import {
+  RegisterDto,
+  LoginDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+} from '../common/dtos';
 
 @Injectable()
 export class AuthService {
@@ -23,6 +29,7 @@ export class AuthService {
     email: string;
     name: string;
     hskLevel: string;
+    dailyGoal?: number;
     streakCount: number;
     lastStudyDate: Date | null;
     createdAt: Date;
@@ -32,6 +39,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       hskLevel: user.hskLevel as UserDto['hskLevel'],
+      dailyGoal: user.dailyGoal ?? 20,
       streakCount: user.streakCount,
       lastStudyDate: user.lastStudyDate?.toISOString() ?? null,
       createdAt: user.createdAt.toISOString(),
@@ -117,5 +125,34 @@ export class AuthService {
       throw new UnauthorizedException('Người dùng không tồn tại');
     }
     return this.toUserDto(user);
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserDto> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.hskLevel !== undefined ? { hskLevel: dto.hskLevel } : {}),
+        ...(dto.dailyGoal !== undefined ? { dailyGoal: dto.dailyGoal } : {}),
+      },
+    });
+    return this.toUserDto(user);
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ ok: boolean }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+    const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new BadRequestException('Mật khẩu hiện tại không đúng');
+    }
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+    return { ok: true };
   }
 }

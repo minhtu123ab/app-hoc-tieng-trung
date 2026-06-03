@@ -4,13 +4,18 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { DecksService } from './decks.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { GenerateVocabDto } from '../common/dtos';
+import {
+  CreateDeckDto,
+  GenerateVocabDto,
+  UpdateDeckDto,
+} from '../common/dtos';
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -22,12 +27,45 @@ export class DecksController {
     return this.decksService.findAll(req.user.userId);
   }
 
+  @Post('decks')
+  create(
+    @Req() req: { user: { userId: string } },
+    @Body() dto: CreateDeckDto,
+  ) {
+    return this.decksService.create(req.user.userId, dto);
+  }
+
   @Get('decks/:id')
   findOne(
     @Req() req: { user: { userId: string } },
     @Param('id') id: string,
   ) {
     return this.decksService.findOne(req.user.userId, id);
+  }
+
+  @Patch('decks/:id')
+  update(
+    @Req() req: { user: { userId: string } },
+    @Param('id') id: string,
+    @Body() dto: UpdateDeckDto,
+  ) {
+    return this.decksService.update(req.user.userId, id, dto);
+  }
+
+  @Get('decks/:id/export')
+  exportDeck(
+    @Req() req: { user: { userId: string } },
+    @Param('id') id: string,
+  ) {
+    return this.decksService.exportDeck(req.user.userId, id);
+  }
+
+  @Post('decks/import')
+  importDeck(
+    @Req() req: { user: { userId: string } },
+    @Body() body: Parameters<DecksService['importDeck']>[1],
+  ) {
+    return this.decksService.importDeck(req.user.userId, body);
   }
 
   @Delete('decks/:id')

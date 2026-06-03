@@ -46,6 +46,7 @@ export interface UserDto {
   email: string;
   name: string;
   hskLevel: HskLevel;
+  dailyGoal?: number;
   streakCount: number;
   lastStudyDate: string | null;
   createdAt: string;
@@ -159,15 +160,38 @@ export interface TutorChatDto {
   role?: 'teacher' | 'friend' | 'customer' | 'shopkeeper';
 }
 
+export interface DeckStat {
+  deckId: string;
+  title: string;
+  wordCount: number;
+  learned: number;
+  mastered: number;
+}
+
 export interface StatsOverview {
   wordsLearned: number;
   wordsMastered: number;
   wordsForgetting: number;
+  /** @deprecated use wordsDueNow */
   wordsDueToday: number;
+  wordsDueNow?: number;
   streakCount: number;
   accuracyByMode: Record<string, { total: number; correct: number; accuracy: number }>;
   progressOverTime: Array<{ date: string; reviews: number; correct: number }>;
+  deckStats?: DeckStat[];
+  dailyGoal?: number;
+  reviewsToday?: number;
+  dailyGoalProgress?: number;
 }
+
+export const PRACTICE_MODE_LABELS: Record<PracticeMode, string> = {
+  [PracticeMode.VIET_TO_HAN]: 'Việt → Hán',
+  [PracticeMode.HAN_TO_VIET]: 'Hán → Việt',
+  [PracticeMode.LISTEN_TYPE]: 'Nghe & gõ',
+  [PracticeMode.FILL_BLANK]: 'Điền khuyết',
+  [PracticeMode.SENTENCE_ORDER]: 'Sắp câu',
+  [PracticeMode.AI_CONVERSATION]: 'Hội thoại AI',
+};
 
 export const TOPICS = [
   'Du lịch',
