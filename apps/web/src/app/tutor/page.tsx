@@ -7,6 +7,7 @@ import { Card, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { TutorMarkdown } from '@/components/tutor/tutor-markdown';
 
 interface Message {
   id: string;
@@ -102,8 +103,8 @@ export default function TutorPage() {
             </Button>
           </div>
           {askAnswer && (
-            <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm whitespace-pre-wrap">
-              {askAnswer}
+            <div className="mt-4 rounded-xl border border-border bg-card-solid p-4 shadow-sm">
+              <TutorMarkdown content={askAnswer} />
             </div>
           )}
         </Card>
@@ -128,13 +129,17 @@ export default function TutorPage() {
               <div
                 key={msg.id}
                 className={cn(
-                  'rounded-lg p-3 text-sm',
+                  'rounded-xl p-3 text-sm',
                   msg.role === 'USER'
-                    ? 'ml-8 bg-red-50'
-                    : 'mr-8 bg-slate-50 whitespace-pre-wrap',
+                    ? 'ml-8 border border-primary/10 bg-primary/5'
+                    : 'mr-8 border border-border bg-card-solid shadow-sm',
                 )}
               >
-                {msg.content}
+                {msg.role === 'ASSISTANT' ? (
+                  <TutorMarkdown content={msg.content} />
+                ) : (
+                  <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                )}
               </div>
             ))}
             <div ref={bottomRef} />

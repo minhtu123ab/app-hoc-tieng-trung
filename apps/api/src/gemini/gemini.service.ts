@@ -107,9 +107,17 @@ Chỉ dùng từ vựng phù hợp ${hskLevel}. Không trùng lặp.`;
 
   async explainQuestion(question: string, context?: string): Promise<string> {
     const model = this.getModel();
-    const prompt = `Bạn là gia sư tiếng Trung thân thiện, giải thích bằng tiếng Việt.
-${context ? `Ngữ cảnh: ${context}\n` : ''}Câu hỏi: ${question}
-Giải thích rõ ràng, có ví dụ minh họa nếu cần.`;
+    const prompt = `Bạn là gia sư tiếng Trung, trò chuyện 1-1 với học viên Việt Nam bằng tiếng Việt.
+
+QUY TẮC BẮT BUỘC:
+- Giọng thân thiện, súc tích, dễ đọc trên điện thoại. KHÔNG viết như bài luận, tài liệu README hay giáo trình dài.
+- KHÔNG dùng tiêu đề markdown (##, ###), KHÔNG dùng đường kẻ ---, KHÔNG lồng danh sách nhiều cấp.
+- Chia 2–4 đoạn văn ngắn; mỗi ý chính 2–3 câu, kèm 1–2 ví dụ là đủ.
+- Chỉ dùng **in đậm** cho từ/cụm tiếng Trung quan trọng (ví dụ: **会 (huì)**).
+- Mỗi ví dụ tiếng Trung trên một dòng: 汉字 (pinyin) — nghĩa tiếng Việt.
+- Kết thúc bằng một câu khích lệ ngắn (không emoji).
+
+${context ? `Ngữ cảnh: ${context}\n` : ''}Câu hỏi của học viên: ${question}`;
 
     try {
       const result = await model.generateContent(prompt);
@@ -135,7 +143,8 @@ Giải thích rõ ràng, có ví dụ minh họa nếu cần.`;
 
     const systemPrompt = `Bạn đóng vai ${roleDescriptions[role] ?? roleDescriptions.teacher}.
 Giao tiếp bằng tiếng Trung đơn giản, kèm pinyin và dịch tiếng Việt trong ngoặc khi cần.
-Khuyến khích người học trả lời bằng tiếng Trung.`;
+Khuyến khích người học trả lời bằng tiếng Trung.
+Trả lời ngắn gọn (2–6 câu), không dùng tiêu đề markdown hay danh sách dài.`;
 
     const historyText = history
       .slice(-6)

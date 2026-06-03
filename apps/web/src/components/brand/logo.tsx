@@ -12,8 +12,8 @@ interface LogoProps {
 }
 
 const sizes = {
-  sm: { img: 32, title: 'text-base', sub: 'text-[10px]' },
-  md: { img: 40, title: 'text-lg', sub: 'text-[10px]' },
+  sm: { img: 36, title: 'text-base', sub: 'text-[10px]' },
+  md: { img: 44, title: 'text-lg', sub: 'text-[10px]' },
   lg: { img: 56, title: 'text-2xl', sub: 'text-xs' },
 };
 
@@ -35,7 +35,7 @@ export function Logo({
         alt="LinguaFlow AI"
         width={s.img}
         height={s.img}
-        className="shrink-0 object-contain drop-shadow-sm"
+        className="shrink-0 object-contain"
         priority
       />
       {showText && !collapsed && (

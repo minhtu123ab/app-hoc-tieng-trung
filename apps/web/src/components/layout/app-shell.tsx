@@ -305,7 +305,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5 text-foreground" />
           </button>
-          <Logo variant="light" showText size="sm" href="/dashboard" />
+          <Logo variant="light" showText size="md" href="/dashboard" />
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
