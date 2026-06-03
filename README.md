@@ -75,15 +75,15 @@ Sau khi seed:
 
 ## Tính năng MVP
 
-| Module | Mô tả |
-|--------|-------|
-| Auth | Đăng ký, đăng nhập, JWT refresh |
-| AI sinh từ | Gemini tạo bộ từ theo chủ đề + HSK |
-| Decks | Quản lý bộ từ, flashcard |
-| SRS | Ôn tập spaced repetition (SM-2) |
-| Luyện tập | 6 chế độ: Việt→Hán, Hán→Việt, nghe-gõ, điền từ, sắp xếp, hội thoại |
-| Gia sư AI | Giải thích ngữ pháp + hội thoại đóng vai |
-| Thống kê | Biểu đồ tiến bộ, độ chính xác |
+| Module     | Mô tả                                                              |
+| ---------- | ------------------------------------------------------------------ |
+| Auth       | Đăng ký, đăng nhập, JWT refresh                                    |
+| AI sinh từ | Gemini tạo bộ từ theo chủ đề + HSK                                 |
+| Decks      | Quản lý bộ từ, flashcard                                           |
+| SRS        | Ôn tập spaced repetition (SM-2)                                    |
+| Luyện tập  | 6 chế độ: Việt→Hán, Hán→Việt, nghe-gõ, điền từ, sắp xếp, hội thoại |
+| Gia sư AI  | Giải thích ngữ pháp + hội thoại đóng vai                           |
+| Thống kê   | Biểu đồ tiến bộ, độ chính xác                                      |
 
 ## Cấu trúc monorepo
 
@@ -111,3 +111,4 @@ docker-compose.yml
 - Speech-to-Text (chấm phát âm)
 - OCR, Video learning, Reading assistant
 - Mobile app
+  a
