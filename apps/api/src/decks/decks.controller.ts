@@ -12,8 +12,10 @@ import {
 import { DecksService } from './decks.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
+  AddDeckWordsDto,
   CreateDeckDto,
   GenerateVocabDto,
+  ImportDeckDto,
   UpdateDeckDto,
 } from '../common/dtos';
 
@@ -63,9 +65,18 @@ export class DecksController {
   @Post('decks/import')
   importDeck(
     @Req() req: { user: { userId: string } },
-    @Body() body: Parameters<DecksService['importDeck']>[1],
+    @Body() body: ImportDeckDto,
   ) {
     return this.decksService.importDeck(req.user.userId, body);
+  }
+
+  @Post('decks/:id/words')
+  addWords(
+    @Req() req: { user: { userId: string } },
+    @Param('id') id: string,
+    @Body() dto: AddDeckWordsDto,
+  ) {
+    return this.decksService.addWords(req.user.userId, id, dto);
   }
 
   @Delete('decks/:id')
