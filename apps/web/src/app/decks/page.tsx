@@ -6,6 +6,7 @@ import { api } from '@/contexts/auth-context';
 import { Card, CardTitle } from '@/components/ui/card';
 import type { DeckDto } from '@linguaflow/shared';
 import { formatDate } from '@/lib/utils';
+import { PageHeader } from '@/components/layout/page-header';
 
 export default function DecksPage() {
   const { data: decks, isLoading } = useQuery<DeckDto[]>({
@@ -21,24 +22,24 @@ export default function DecksPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Bộ từ vựng</h1>
-          <p className="mt-1 text-muted">Quản lý các bộ từ đã tạo hoặc sinh bằng AI</p>
-        </div>
-        <Link
-          href="/generate"
-          className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-red-700"
-        >
-          + Sinh từ AI
-        </Link>
-      </div>
+    <div className="w-full space-y-6">
+      <PageHeader
+        title="Bộ từ vựng"
+        description="Quản lý các bộ từ đã tạo hoặc sinh bằng AI"
+        action={
+          <Link
+            href="/generate"
+            className="inline-flex w-fit shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-red-700"
+          >
+            + Sinh từ AI
+          </Link>
+        }
+      />
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
         {decks?.map((deck) => (
           <Link key={deck.id} href={`/decks/${deck.id}`}>
-            <Card className="transition-shadow hover:shadow-md">
+            <Card className="h-full transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
               <CardTitle>{deck.title}</CardTitle>
               <p className="mt-2 text-sm text-muted">
                 {deck.topic} · {deck.hskLevel}

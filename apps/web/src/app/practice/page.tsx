@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/layout/page-header';
 import { PracticeMode } from '@linguaflow/shared';
 import {
   PRACTICE_LIMIT_PRESETS,
@@ -57,55 +58,59 @@ export default function PracticeIndexPage() {
   };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Luyện tập</h1>
-      <p className="mt-1 text-muted">Chọn chế độ và số từ mỗi phiên luyện tập</p>
+    <div className="w-full space-y-6 xl:space-y-8">
+      <PageHeader
+        title="Luyện tập"
+        description="Chọn chế độ và số từ mỗi phiên luyện tập"
+      />
 
-      <Card className="mt-6 max-w-xl">
-        <CardTitle>Số từ mỗi phiên</CardTitle>
-        <p className="mt-1 text-sm text-muted">
-          Chọn nhanh hoặc nhập số tùy ý (tối đa 500, giới hạn bởi số từ bạn đang học)
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {PRACTICE_LIMIT_PRESETS.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => updateCount(preset)}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-                wordCount === preset
-                  ? 'border-primary bg-red-50 font-medium text-primary'
-                  : 'border-border hover:bg-slate-50'
-              }`}
-            >
-              {preset} từ
-            </button>
+      <div className="grid gap-6 lg:grid-cols-12 lg:items-start xl:gap-8">
+        <Card className="lg:col-span-4 xl:col-span-3">
+          <CardTitle>Số từ mỗi phiên</CardTitle>
+          <p className="mt-1 text-sm text-muted">
+            Chọn nhanh hoặc nhập số tùy ý (tối đa 500, giới hạn bởi số từ bạn đang học)
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {PRACTICE_LIMIT_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => updateCount(preset)}
+                className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                  wordCount === preset
+                    ? 'border-primary bg-red-50 font-medium text-primary'
+                    : 'border-border hover:bg-slate-50'
+                }`}
+              >
+                {preset} từ
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <label className="text-sm whitespace-nowrap">Tùy chỉnh:</label>
+            <Input
+              type="number"
+              min={1}
+              max={500}
+              value={wordCount}
+              onChange={(e) => updateCount(clampPracticeLimit(Number(e.target.value)))}
+              className="w-28"
+            />
+            <span className="text-sm text-muted">từ / phiên</span>
+          </div>
+        </Card>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:col-span-8 lg:grid-cols-2 xl:col-span-9 xl:grid-cols-3">
+          {modes.map(({ mode, title, desc }) => (
+            <Link key={mode} href={`/practice/${mode}?limit=${wordCount}`}>
+              <Card className="flex h-full flex-col transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+                <CardTitle>{title}</CardTitle>
+                <p className="mt-2 flex-1 text-sm text-muted">{desc}</p>
+                <p className="mt-4 text-xs font-medium text-primary">{wordCount} từ / phiên</p>
+              </Card>
+            </Link>
           ))}
         </div>
-        <div className="mt-4 flex items-center gap-3">
-          <label className="text-sm whitespace-nowrap">Tùy chỉnh:</label>
-          <Input
-            type="number"
-            min={1}
-            max={500}
-            value={wordCount}
-            onChange={(e) => updateCount(clampPracticeLimit(Number(e.target.value)))}
-            className="w-28"
-          />
-          <span className="text-sm text-muted">từ / phiên</span>
-        </div>
-      </Card>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {modes.map(({ mode, title, desc }) => (
-          <Link key={mode} href={`/practice/${mode}?limit=${wordCount}`}>
-            <Card className="h-full transition-shadow hover:shadow-md">
-              <CardTitle>{title}</CardTitle>
-              <p className="mt-2 text-sm text-muted">{desc}</p>
-              <p className="mt-3 text-xs text-primary">{wordCount} từ / phiên</p>
-            </Card>
-          </Link>
-        ))}
       </div>
     </div>
   );

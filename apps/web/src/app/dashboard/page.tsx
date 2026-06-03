@@ -58,7 +58,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div>
+    <div className="w-full space-y-8">
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/90 via-primary to-primary-dark p-6 text-white shadow-xl shadow-primary/20 sm:p-8">
         <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="absolute -bottom-10 right-1/4 h-32 w-32 rounded-full bg-accent/20 blur-2xl" />

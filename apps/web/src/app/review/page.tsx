@@ -47,10 +47,12 @@ export default function ReviewPage() {
 
   if (!dueWords?.length) {
     return (
-      <Card className="max-w-md text-center">
+      <div className="flex w-full justify-center">
+      <Card className="w-full max-w-md text-center">
         <CardTitle>Hoàn thành!</CardTitle>
         <p className="mt-2 text-muted">Không có từ nào cần ôn hôm nay.</p>
       </Card>
+      </div>
     );
   }
 
@@ -58,7 +60,7 @@ export default function ReviewPage() {
   const word = current.word!;
 
   return (
-    <div className="mx-auto max-w-lg">
+    <div className="mx-auto w-full max-w-xl">
       <div className="mb-4 flex items-center justify-between text-sm text-muted">
         <span>
           Từ {index + 1} / {dueWords.length}

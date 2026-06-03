@@ -56,35 +56,51 @@ function GuideSection({
   );
 }
 
+function TableOfContents({ className }: { className?: string }) {
+  return (
+    <nav className={className}>
+      {sections.map(({ id, label }) => (
+        <a
+          key={id}
+          href={`#${id}`}
+          className="block rounded-lg px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-primary"
+        >
+          {label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
 export default function GuidePage() {
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="w-full space-y-6 xl:space-y-8">
       <div className="flex items-start gap-3">
         <CircleHelp className="mt-1 h-8 w-8 shrink-0 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold">Hướng dẫn sử dụng LinguaFlow AI</h1>
-          <p className="mt-1 text-muted">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Hướng dẫn sử dụng LinguaFlow AI
+          </h1>
+          <p className="mt-1.5 text-sm text-muted sm:text-base">
             Tài liệu chi tiết giúp bạn biết từng mục dùng để làm gì và cách học hiệu quả.
           </p>
         </div>
       </div>
 
-      <Card className="mt-6">
+      <Card className="lg:hidden">
         <CardTitle>Mục lục</CardTitle>
-        <nav className="mt-3 grid gap-1 sm:grid-cols-2">
-          {sections.map(({ id, label }) => (
-            <a
-              key={id}
-              href={`#${id}`}
-              className="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-primary"
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
+        <TableOfContents className="mt-3 grid gap-1 sm:grid-cols-2" />
       </Card>
 
-      <div className="mt-8 space-y-6">
+      <div className="grid gap-6 lg:grid-cols-12 xl:gap-8">
+        <aside className="hidden lg:col-span-3 lg:block xl:col-span-3">
+          <Card className="sticky top-8">
+            <CardTitle>Mục lục</CardTitle>
+            <TableOfContents className="mt-3 space-y-0.5" />
+          </Card>
+        </aside>
+
+        <div className="space-y-6 lg:col-span-9 xl:col-span-9">
         <GuideSection id="bat-dau" icon={CircleHelp} title="1. Bắt đầu — Đăng nhập & tài khoản">
           <p>
             LinguaFlow AI là nền tảng học tiếng Trung cá nhân hóa. Bạn cần đăng nhập để lưu tiến
@@ -366,6 +382,7 @@ export default function GuidePage() {
             </div>
           </div>
         </GuideSection>
+        </div>
       </div>
     </div>
   );

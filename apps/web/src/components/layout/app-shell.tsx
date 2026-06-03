@@ -308,8 +308,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Logo variant="light" showText size="md" href="/dashboard" />
         </header>
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="animate-fade-in mx-auto max-w-6xl">{children}</div>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 xl:px-10 2xl:px-12">
+          <div className="animate-fade-in w-full">{children}</div>
         </main>
       </div>
     </div>

@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/contexts/auth-context';
 import { Card, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/layout/page-header';
 import type { StatsOverview } from '@linguaflow/shared';
 import {
   BarChart,
@@ -35,11 +36,10 @@ export default function StatsPage() {
   );
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Thống kê</h1>
-      <p className="mt-1 text-muted">Theo dõi tiến bộ học tập của bạn</p>
+    <div className="w-full space-y-6 xl:space-y-8">
+      <PageHeader title="Thống kê" description="Theo dõi tiến bộ học tập của bạn" />
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <p className="text-sm text-muted">Đã học</p>
           <p className="text-3xl font-bold">{stats?.wordsLearned ?? 0}</p>
@@ -64,10 +64,10 @@ export default function StatsPage() {
         </Card>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <Card>
           <CardTitle>Độ chính xác theo chế độ</CardTitle>
-          <div className="mt-4 h-64">
+          <div className="mt-4 h-64 xl:h-80">
             {modeData.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={modeData}>
@@ -88,7 +88,7 @@ export default function StatsPage() {
 
         <Card>
           <CardTitle>Tiến bộ 30 ngày</CardTitle>
-          <div className="mt-4 h-64">
+          <div className="mt-4 h-64 xl:h-80">
             {stats?.progressOverTime?.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={stats.progressOverTime}>

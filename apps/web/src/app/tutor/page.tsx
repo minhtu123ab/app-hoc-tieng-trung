@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TutorMarkdown } from '@/components/tutor/tutor-markdown';
+import { PageHeader } from '@/components/layout/page-header';
 
 interface Message {
   id: string;
@@ -61,11 +62,10 @@ export default function TutorPage() {
   }, [history]);
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-bold">Gia sư AI</h1>
-      <p className="mt-1 text-muted">Hỏi ngữ pháp hoặc luyện hội thoại</p>
+    <div className="mx-auto w-full max-w-5xl space-y-6">
+      <PageHeader title="Gia sư AI" description="Hỏi ngữ pháp hoặc luyện hội thoại" />
 
-      <div className="mt-4 flex gap-2">
+      <div className="flex gap-2">
         <Button
           variant={tab === 'ask' ? 'default' : 'outline'}
           size="sm"
@@ -124,7 +124,7 @@ export default function TutorPage() {
             </select>
           </div>
 
-          <div className="max-h-96 space-y-3 overflow-y-auto">
+          <div className="max-h-[28rem] space-y-3 overflow-y-auto xl:max-h-[32rem]">
             {history?.map((msg) => (
               <div
                 key={msg.id}
