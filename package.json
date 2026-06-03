@@ -1,0 +1,28 @@
+{
+  "name": "linguaflow-ai",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "dev:api": "pnpm --filter @linguaflow/api dev",
+    "dev:web": "pnpm --filter @linguaflow/web dev",
+    "build": "pnpm run --filter @linguaflow/shared build && pnpm run --filter @linguaflow/api build && pnpm run --filter @linguaflow/web build",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @linguaflow/api prisma:migrate",
+    "db:seed": "pnpm --filter @linguaflow/api prisma:seed",
+    "db:studio": "pnpm --filter @linguaflow/api prisma:studio"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "bcrypt",
+      "prisma",
+      "sharp"
+    ]
+  }
+}

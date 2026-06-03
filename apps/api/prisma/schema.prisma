@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum HskLevel {
+  HSK1
+  HSK2
+  HSK3
+  HSK4
+  HSK5
+  HSK6
+  ADVANCED
+}
+
+enum DeckSource {
+  AI
+  MANUAL
+}
+
+enum WordStatus {
+  NEW
+  LEARNING
+  FORGETTING
+  MASTERED
+}
+
+enum ReviewRating {
+  AGAIN
+  HARD
+  GOOD
+  EASY
+}
+
+enum PracticeMode {
+  VIET_TO_HAN
+  HAN_TO_VIET
+  LISTEN_TYPE
+  FILL_BLANK
+  SENTENCE_ORDER
+  AI_CONVERSATION
+}
+
+enum TutorRole {
+  USER
+  ASSISTANT
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  name           String
+  hskLevel       HskLevel @default(HSK1)
+  streakCount    Int      @default(0)
+  lastStudyDate  DateTime?
+  createdAt      DateTime @default(now())
+
+  decks            Deck[]
+  wordProgress     UserWordProgress[]
+  practiceSessions PracticeSession[]
+  tutorMessages    TutorMessage[]
+}
+
+model Deck {
+  id        String     @id @default(cuid())
+  userId    String
+  title     String
+  topic     String
+  hskLevel  HskLevel
+  source    DeckSource @default(MANUAL)
+  createdAt DateTime   @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  words Word[]
+
+  @@index([userId])
+}
+
+model Word {
+  id            String   @id @default(cuid())
+  deckId        String
+  hanzi         String
+  pinyin        String
+  meaningVi     String
+  partOfSpeech  String?
+  exampleHanzi  String?
+  examplePinyin String?
+  exampleVi     String?
+  hskLevel      HskLevel
+
+  deck     Deck               @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  progress UserWordProgress[]
+
+  @@index([deckId])
+}
+
+model UserWordProgress {
+  id              String     @id @default(cuid())
+  userId          String
+  wordId          String
+  status          WordStatus @default(NEW)
+  easeFactor      Float      @default(2.5)
+  intervalDays    Int        @default(0)
+  repetitions     Int        @default(0)
+  dueDate         DateTime   @default(now())
+  lastReviewedAt  DateTime?
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word       Word        @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  reviewLogs ReviewLog[]
+
+  @@unique([userId, wordId])
+  @@index([userId, dueDate])
+}
+
+model ReviewLog {
+  id                 String        @id @default(cuid())
+  userWordProgressId String
+  rating             ReviewRating?
+  mode               PracticeMode?
+  isCorrect          Boolean?
+  reviewedAt         DateTime      @default(now())
+
+  userWordProgress UserWordProgress @relation(fields: [userWordProgressId], references: [id], onDelete: Cascade)
+
+  @@index([userWordProgressId])
+}
+
+model PracticeSession {
+  id        String       @id @default(cuid())
+  userId    String
+  mode      PracticeMode
+  total     Int          @default(0)
+  correct   Int          @default(0)
+  startedAt DateTime     @default(now())
+  endedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model TutorMessage {
+  id        String    @id @default(cuid())
+  userId    String
+  role      TutorRole
+  content   String
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
