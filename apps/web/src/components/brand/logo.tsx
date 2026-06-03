@@ -30,23 +30,14 @@ export function Logo({
 
   const content = (
     <div className={cn('flex items-center gap-3', className)}>
-      <div
-        className={cn(
-          'relative shrink-0 overflow-hidden rounded-xl ring-1',
-          isDark
-            ? 'shadow-lg shadow-primary/20 ring-white/10'
-            : 'shadow-md shadow-primary/10 ring-black/5',
-        )}
-      >
-        <Image
-          src="/logo.png"
-          alt="LinguaFlow AI"
-          width={s.img}
-          height={s.img}
-          className="object-cover"
-          priority
-        />
-      </div>
+      <Image
+        src="/logo.png"
+        alt="LinguaFlow AI"
+        width={s.img}
+        height={s.img}
+        className="shrink-0 object-contain drop-shadow-sm"
+        priority
+      />
       {showText && !collapsed && (
         <div className="min-w-0">
           <p
