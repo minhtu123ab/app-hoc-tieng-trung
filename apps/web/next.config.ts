@@ -13,15 +13,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  async rewrites() {
-    const backend = process.env.BACKEND_URL ?? 'http://localhost:4000';
-    return [
-      {
-        source: '/api/proxy/:path*',
-        destination: `${backend}/:path*`,
-      },
-    ];
-  },
 };
 
 export default nextConfig;

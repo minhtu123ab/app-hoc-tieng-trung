@@ -26,8 +26,15 @@ export default function LoginPage() {
       await login(email, password);
       await refreshUser();
       router.push('/dashboard');
-    } catch {
-      setError('Email hoặc mật khẩu không đúng');
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message;
+      setError(
+        msg === 'Invalid credentials'
+          ? 'Email hoặc mật khẩu không đúng'
+          : msg || 'Không kết nối được API. Thử lại sau vài giây.',
+      );
     } finally {
       setLoading(false);
     }

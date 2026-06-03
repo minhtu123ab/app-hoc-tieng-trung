@@ -29,8 +29,11 @@ export default function RegisterPage() {
       await register({ name, email, password, hskLevel });
       await refreshUser();
       router.push('/dashboard');
-    } catch {
-      setError('Không thể đăng ký. Email có thể đã tồn tại.');
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message;
+      setError(msg || 'Không kết nối được API. Thử lại sau vài giây.');
     } finally {
       setLoading(false);
     }
