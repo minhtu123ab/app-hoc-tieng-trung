@@ -180,9 +180,27 @@ export class EndPracticeSessionDto {
   correct!: number;
 }
 
-export class ReviewDto {
+export class GenerateSentencesDto {
   @IsString()
-  wordId!: string;
+  topic!: string;
+
+  @IsEnum(HskLevel)
+  hskLevel!: HskLevel;
+
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  count!: number;
+}
+
+export class ReviewDto {
+  @IsOptional()
+  @IsString()
+  wordId?: string;
+
+  @IsOptional()
+  @IsString()
+  sentenceId?: string;
 
   @IsEnum(ReviewRating)
   rating!: ReviewRating;
@@ -202,6 +220,10 @@ export class GradePracticeDto {
   @IsOptional()
   @IsString()
   wordId?: string;
+
+  @IsOptional()
+  @IsString()
+  sentenceId?: string;
 
   @IsString()
   userAnswer!: string;

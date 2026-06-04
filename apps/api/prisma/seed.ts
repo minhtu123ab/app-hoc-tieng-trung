@@ -1,6 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import 'dotenv/config';
+import { createPrismaClient } from '../src/prisma/create-prisma-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const HSK1_WORDS = [
   {
@@ -94,6 +95,46 @@ async function main() {
       data: {
         userId: user.id,
         wordId: word.id,
+        status: 'NEW',
+        dueDate: new Date(),
+      },
+    });
+  }
+
+  const sentenceDeck = await prisma.sentenceDeck.create({
+    data: {
+      userId: user.id,
+      title: 'HSK1 Câu mẫu',
+      topic: 'Đời sống',
+      hskLevel: 'HSK1',
+      source: 'MANUAL',
+      sentences: {
+        create: [
+          {
+            hanzi: '我是学生',
+            pinyin: 'wǒ shì xuésheng',
+            meaningVi: 'Tôi là học sinh',
+            tokens: ['我', '是', '学', '生'],
+            hskLevel: 'HSK1',
+          },
+          {
+            hanzi: '我喜欢学习中文',
+            pinyin: 'wǒ xǐhuan xuéxí Zhōngwén',
+            meaningVi: 'Tôi thích học tiếng Trung',
+            tokens: ['我', '喜', '欢', '学', '习', '中', '文'],
+            hskLevel: 'HSK1',
+          },
+        ],
+      },
+    },
+    include: { sentences: true },
+  });
+
+  for (const sentence of sentenceDeck.sentences) {
+    await prisma.userSentenceProgress.create({
+      data: {
+        userId: user.id,
+        sentenceId: sentence.id,
         status: 'NEW',
         dueDate: new Date(),
       },

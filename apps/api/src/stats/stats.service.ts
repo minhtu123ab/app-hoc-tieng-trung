@@ -11,7 +11,7 @@ export class StatsService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const now = new Date();
 
-    const [statusCounts, wordsDueNow, reviewLogs, sessions, decks] =
+    const [statusCounts, wordsDueNow, sentencesDueNow, reviewLogs, sessions, decks] =
       await Promise.all([
         this.prisma.userWordProgress.groupBy({
           by: ['status'],
@@ -21,9 +21,15 @@ export class StatsService {
         this.prisma.userWordProgress.count({
           where: { userId, dueDate: { lte: now } },
         }),
+        this.prisma.userSentenceProgress.count({
+          where: { userId, dueDate: { lte: now } },
+        }),
         this.prisma.reviewLog.findMany({
           where: {
-            userWordProgress: { userId },
+            OR: [
+              { userWordProgress: { userId } },
+              { userSentenceProgress: { userId } },
+            ],
             reviewedAt: {
               gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
             },
@@ -113,6 +119,7 @@ export class StatsService {
       wordsForgetting: countByStatus('FORGETTING'),
       wordsDueToday: wordsDueNow,
       wordsDueNow,
+      sentencesDueNow,
       streakCount: user?.streakCount ?? 0,
       accuracyByMode,
       progressOverTime,

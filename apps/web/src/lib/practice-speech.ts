@@ -19,6 +19,8 @@ export function getPracticeSpeechText(
       return q.answer || q.prompt;
     case PracticeMode.SENTENCE_ORDER:
       return q.answer;
+    case PracticeMode.WORD_BANK:
+      return q.answer;
     case PracticeMode.AI_CONVERSATION:
       return q.hint || q.answer;
     default:

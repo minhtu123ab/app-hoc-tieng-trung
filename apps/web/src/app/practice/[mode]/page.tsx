@@ -30,6 +30,23 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageSkeleton } from '@/components/ui/states';
+import type { MatchPairItem } from '@linguaflow/shared';
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+type MatchCard = {
+  id: string;
+  label: string;
+  pairKey: string;
+  type: 'hanzi' | 'vi';
+};
 
 function PracticeSidebar({
   mode,
@@ -123,6 +140,9 @@ export default function PracticeModePage() {
   const mode = params.mode as PracticeMode;
   const limit = parsePracticeLimitParam(searchParams.get('limit'));
   const deckId = searchParams.get('deckId') ?? undefined;
+  const sentenceDeckId = searchParams.get('sentenceDeckId') ?? undefined;
+  const source = searchParams.get('source') === 'sentences' ? 'sentences' : 'words';
+  const scope = searchParams.get('scope') === 'due' ? 'due' : 'all';
   const modeLabel = PRACTICE_MODE_LABELS[mode] ?? mode;
   const modeDesc = PRACTICE_MODE_DESC[mode];
 
@@ -138,15 +158,25 @@ export default function PracticeModePage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [grading, setGrading] = useState(false);
   const [gradeError, setGradeError] = useState<string | null>(null);
+  const [matchSelected, setMatchSelected] = useState<string | null>(null);
+  const [matchedKeys, setMatchedKeys] = useState<Set<string>>(new Set());
+  const [matchCards, setMatchCards] = useState<MatchCard[]>([]);
   const autoPlayedIndexRef = useRef<number | null>(null);
 
-  const queryKey = ['practice', mode, limit, deckId] as const;
+  const queryKey = ['practice', mode, limit, deckId, sentenceDeckId, source, scope] as const;
 
   const { data: questions, isLoading, error, refetch } = useQuery<PracticeQuestion[]>({
     queryKey,
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: String(limit) });
-      if (deckId) params.set('deckId', deckId);
+      const params = new URLSearchParams({ limit: String(limit), scope });
+      if (source === 'sentences' && sentenceDeckId) {
+        params.set('source', 'sentences');
+        params.set('sentenceDeckId', sentenceDeckId);
+      } else if (deckId) {
+        params.set('deckId', deckId);
+      } else if (source === 'sentences') {
+        params.set('source', 'sentences');
+      }
       const { data } = await api.get(`/practice/${mode}?${params}`);
       return data;
     },
@@ -175,7 +205,30 @@ export default function PracticeModePage() {
     setResult(null);
     setGradeError(null);
     setPickedTokenIndexes([]);
-  }, [index]);
+    setMatchSelected(null);
+    setMatchedKeys(new Set());
+    const qItem = questions?.[index];
+    if (qItem?.matchPairs?.length) {
+      const cards: MatchCard[] = [];
+      for (const p of qItem.matchPairs) {
+        cards.push({
+          id: `h-${p.key}`,
+          label: p.hanzi,
+          pairKey: p.key,
+          type: 'hanzi',
+        });
+        cards.push({
+          id: `v-${p.key}`,
+          label: p.meaningVi,
+          pairKey: p.key,
+          type: 'vi',
+        });
+      }
+      setMatchCards(shuffleArray(cards));
+    } else {
+      setMatchCards([]);
+    }
+  }, [index, questions]);
 
   useEffect(() => {
     if (mode !== 'LISTEN_TYPE' || !questions?.[index]) return;
@@ -201,11 +254,43 @@ export default function PracticeModePage() {
     setFinished(true);
   }, [sessionId, score, queryClient]);
 
+  const submitMatchPairs = async (pairs: MatchPairItem[]) => {
+    setGrading(true);
+    setGradeError(null);
+    try {
+      for (const pair of pairs) {
+        await api.post('/practice/grade', {
+          mode,
+          wordId: pair.wordId,
+          userAnswer: pair.hanzi,
+          correctAnswer: pair.hanzi,
+        });
+      }
+      setResult({ isCorrect: true, correctAnswer: 'Ghép đúng tất cả cặp' });
+      setScore((s) => ({ total: s.total + 1, correct: s.correct + 1 }));
+    } catch {
+      setGradeError('Không chấm được câu trả lời. Thử lại.');
+    } finally {
+      setGrading(false);
+    }
+  };
+
   const submit = async () => {
     if (!q || grading) return;
+    if (mode === 'MATCH_PAIRS' && q.matchPairs) {
+      if (matchedKeys.size !== q.matchPairs.length) {
+        setGradeError('Ghép đủ tất cả các cặp trước khi kiểm tra');
+        return;
+      }
+      await submitMatchPairs(q.matchPairs);
+      return;
+    }
     let userAnswer = answer;
     if (mode === 'HAN_TO_VIET') userAnswer = selected || answer;
     if (mode === 'SENTENCE_ORDER' && q.tokens) {
+      userAnswer = pickedTokenIndexes.map((i) => q.tokens![i]).join('');
+    }
+    if (mode === 'WORD_BANK' && q.tokens) {
       userAnswer = pickedTokenIndexes.map((i) => q.tokens![i]).join('');
     }
 
@@ -215,6 +300,7 @@ export default function PracticeModePage() {
       const { data } = await api.post('/practice/grade', {
         mode,
         wordId: q.wordId,
+        sentenceId: q.sentenceId,
         userAnswer,
         correctAnswer: q.answer,
       });
@@ -238,6 +324,30 @@ export default function PracticeModePage() {
     }
   };
 
+  const handleMatchCardClick = (card: MatchCard) => {
+    if (result || matchedKeys.has(card.pairKey)) return;
+    if (!matchSelected) {
+      setMatchSelected(card.id);
+      return;
+    }
+    const first = matchCards.find((c) => c.id === matchSelected);
+    if (!first || first.id === card.id) {
+      setMatchSelected(null);
+      return;
+    }
+    if (
+      first.pairKey === card.pairKey &&
+      first.type !== card.type
+    ) {
+      setMatchedKeys((prev) => new Set([...prev, card.pairKey]));
+      setMatchSelected(null);
+      setGradeError(null);
+    } else {
+      setMatchSelected(null);
+      setGradeError('Không khớp — thử lại');
+    }
+  };
+
   const toggleToken = (tokenIndex: number) => {
     setPickedTokenIndexes((prev) => {
       const pos = prev.indexOf(tokenIndex);
@@ -246,7 +356,15 @@ export default function PracticeModePage() {
     });
   };
 
-  const backHref = deckId ? `/practice?deckId=${deckId}` : '/practice';
+  const backHref =
+    deckId || sentenceDeckId || source === 'sentences'
+      ? `/practice?${new URLSearchParams({
+          ...(deckId ? { deckId } : {}),
+          ...(sentenceDeckId ? { sentenceDeckId } : {}),
+          ...(source === 'sentences' ? { source: 'sentences' } : {}),
+          scope,
+        }).toString()}`
+      : `/practice?scope=${scope}`;
 
   if (isLoading) {
     return (
@@ -276,12 +394,16 @@ export default function PracticeModePage() {
       <div className="w-full space-y-6">
         <PageHeader title={modeLabel} description={modeDesc} />
         <Card className="max-w-lg">
-          <CardTitle>Chưa có từ để luyện</CardTitle>
+          <CardTitle>
+            {source === 'sentences' ? 'Chưa có câu để luyện' : 'Chưa có từ để luyện'}
+          </CardTitle>
           <p className="mt-2 text-sm text-muted">
-            Hãy thêm bộ từ hoặc sinh từ vựng bằng AI trước.
+            {source === 'sentences'
+              ? 'Hãy sinh câu bằng AI hoặc chọn bộ câu khác.'
+              : 'Hãy thêm bộ từ hoặc sinh từ vựng bằng AI trước.'}
           </p>
           <Link href="/generate" className="mt-4 inline-block">
-            <Button>Sinh từ AI</Button>
+            <Button>{source === 'sentences' ? 'Sinh câu AI' : 'Sinh từ AI'}</Button>
           </Link>
         </Card>
       </div>
@@ -344,7 +466,7 @@ export default function PracticeModePage() {
   };
 
   const sentenceBuilt =
-    mode === 'SENTENCE_ORDER' && q.tokens
+    (mode === 'SENTENCE_ORDER' || mode === 'WORD_BANK') && q.tokens
       ? pickedTokenIndexes.map((i) => q.tokens![i]).join('')
       : '';
 
@@ -407,9 +529,53 @@ export default function PracticeModePage() {
                     </p>
                   )}
                 </>
-              ) : mode === 'SENTENCE_ORDER' ? (
+              ) : mode === 'MATCH_PAIRS' ? (
                 <>
                   <p className="text-sm text-muted">{q.prompt}</p>
+                  <p className="mt-2 text-xs text-muted">
+                    Đã ghép {matchedKeys.size}/{q.matchPairs?.length ?? 0} cặp
+                  </p>
+                  <div className="mx-auto mt-6 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-3">
+                    {matchCards.map((card) => {
+                      const matched = matchedKeys.has(card.pairKey);
+                      const selected = matchSelected === card.id;
+                      return (
+                        <button
+                          key={card.id}
+                          type="button"
+                          disabled={matched || !!result}
+                          onClick={() => handleMatchCardClick(card)}
+                          className={cn(
+                            'rounded-xl border px-3 py-3 text-sm font-medium transition-colors',
+                            card.type === 'hanzi' && 'chinese-text text-base',
+                            matched && 'border-green-300 bg-green-50 text-green-800 opacity-60',
+                            selected && !matched && 'border-primary bg-primary/10',
+                            !matched && !selected && 'border-border bg-card-solid hover:border-primary/40',
+                          )}
+                        >
+                          {card.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : mode === 'SENTENCE_ORDER' || mode === 'WORD_BANK' ? (
+                <>
+                  <p
+                    className={cn(
+                      'font-bold leading-tight',
+                      mode === 'WORD_BANK'
+                        ? 'text-2xl sm:text-3xl'
+                        : 'text-sm text-muted',
+                    )}
+                  >
+                    {mode === 'WORD_BANK' ? q.prompt : q.prompt}
+                  </p>
+                  {mode === 'WORD_BANK' && (
+                    <p className="mt-2 text-sm text-muted">
+                      Chọn các từ Hán bên dưới để ghép câu
+                    </p>
+                  )}
                   <p className="chinese-text mx-auto mt-6 min-h-[56px] max-w-4xl rounded-xl border border-border/60 bg-card-solid p-4 text-xl sm:text-2xl">
                     {sentenceBuilt || '...'}
                   </p>
@@ -436,6 +602,17 @@ export default function PracticeModePage() {
                       Xóa
                     </Button>
                   </div>
+                  {mode === 'WORD_BANK' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-5"
+                      onClick={playAudio}
+                    >
+                      <Volume2 className="h-4 w-4" />
+                      Nghe câu mẫu
+                    </Button>
+                  )}
                 </>
               ) : (
                 <>
@@ -449,9 +626,12 @@ export default function PracticeModePage() {
                   >
                     {q.prompt}
                   </p>
-                  {q.hint && (
-                    <p className="mt-3 text-lg text-muted sm:text-xl">{q.hint}</p>
-                  )}
+                  {q.hint &&
+                    (mode === 'HAN_TO_VIET' ||
+                      (result &&
+                        (mode === 'VIET_TO_HAN' || mode === 'FILL_BLANK'))) && (
+                      <p className="mt-3 text-lg text-muted sm:text-xl">{q.hint}</p>
+                    )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -483,7 +663,9 @@ export default function PracticeModePage() {
 
               {!result &&
                 mode !== 'HAN_TO_VIET' &&
-                mode !== 'SENTENCE_ORDER' && (
+                mode !== 'SENTENCE_ORDER' &&
+                mode !== 'WORD_BANK' &&
+                mode !== 'MATCH_PAIRS' && (
                   <Input
                     className="chinese-text w-full text-center text-lg sm:text-xl"
                     value={answer}
@@ -510,9 +692,25 @@ export default function PracticeModePage() {
                       : 'bg-red-50 text-red-700',
                   )}
                 >
-                  {result.isCorrect
-                    ? 'Chính xác!'
-                    : `Sai. Đáp án: ${result.correctAnswer}`}
+                  {result.isCorrect ? (
+                    <>
+                      Chính xác!
+                      {(mode === 'VIET_TO_HAN' || mode === 'FILL_BLANK') && q.hint && (
+                        <span className="mt-1 block text-base font-normal opacity-90">
+                          Pinyin: {q.hint}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      Sai. Đáp án: {result.correctAnswer}
+                      {(mode === 'VIET_TO_HAN' || mode === 'FILL_BLANK') && q.hint && (
+                        <span className="mt-1 block text-base font-normal opacity-90">
+                          Pinyin: {q.hint}
+                        </span>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 

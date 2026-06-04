@@ -1,10 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum HskLevel {
@@ -42,6 +43,8 @@ enum PracticeMode {
   LISTEN_TYPE
   FILL_BLANK
   SENTENCE_ORDER
+  WORD_BANK
+  MATCH_PAIRS
   AI_CONVERSATION
 }
 
@@ -62,7 +65,9 @@ model User {
   createdAt      DateTime @default(now())
 
   decks            Deck[]
+  sentenceDecks    SentenceDeck[]
   wordProgress     UserWordProgress[]
+  sentenceProgress UserSentenceProgress[]
   practiceSessions PracticeSession[]
   tutorMessages    TutorMessage[]
 }
@@ -100,6 +105,55 @@ model Word {
   @@index([deckId])
 }
 
+model SentenceDeck {
+  id        String     @id @default(cuid())
+  userId    String
+  title     String
+  topic     String
+  hskLevel  HskLevel
+  source    DeckSource @default(MANUAL)
+  createdAt DateTime   @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentences Sentence[]
+
+  @@index([userId])
+}
+
+model Sentence {
+  id              String   @id @default(cuid())
+  sentenceDeckId  String
+  hanzi           String
+  pinyin          String
+  meaningVi       String
+  tokens          String[]
+  hskLevel        HskLevel
+
+  sentenceDeck SentenceDeck           @relation(fields: [sentenceDeckId], references: [id], onDelete: Cascade)
+  progress     UserSentenceProgress[]
+
+  @@index([sentenceDeckId])
+}
+
+model UserSentenceProgress {
+  id             String     @id @default(cuid())
+  userId         String
+  sentenceId     String
+  status         WordStatus @default(NEW)
+  easeFactor     Float      @default(2.5)
+  intervalDays   Int        @default(0)
+  repetitions    Int        @default(0)
+  dueDate        DateTime   @default(now())
+  lastReviewedAt DateTime?
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentence   Sentence    @relation(fields: [sentenceId], references: [id], onDelete: Cascade)
+  reviewLogs ReviewLog[]
+
+  @@unique([userId, sentenceId])
+  @@index([userId, dueDate])
+}
+
 model UserWordProgress {
   id              String     @id @default(cuid())
   userId          String
@@ -120,16 +174,19 @@ model UserWordProgress {
 }
 
 model ReviewLog {
-  id                 String        @id @default(cuid())
-  userWordProgressId String
-  rating             ReviewRating?
-  mode               PracticeMode?
-  isCorrect          Boolean?
-  reviewedAt         DateTime      @default(now())
+  id                     String        @id @default(cuid())
+  userWordProgressId     String?
+  userSentenceProgressId String?
+  rating                 ReviewRating?
+  mode                   PracticeMode?
+  isCorrect              Boolean?
+  reviewedAt             DateTime      @default(now())
 
-  userWordProgress UserWordProgress @relation(fields: [userWordProgressId], references: [id], onDelete: Cascade)
+  userWordProgress     UserWordProgress?     @relation(fields: [userWordProgressId], references: [id], onDelete: Cascade)
+  userSentenceProgress UserSentenceProgress? @relation(fields: [userSentenceProgressId], references: [id], onDelete: Cascade)
 
   @@index([userWordProgressId])
+  @@index([userSentenceProgressId])
 }
 
 model PracticeSession {

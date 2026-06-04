@@ -33,6 +33,8 @@ export enum PracticeMode {
   LISTEN_TYPE = 'LISTEN_TYPE',
   FILL_BLANK = 'FILL_BLANK',
   SENTENCE_ORDER = 'SENTENCE_ORDER',
+  WORD_BANK = 'WORD_BANK',
+  MATCH_PAIRS = 'MATCH_PAIRS',
   AI_CONVERSATION = 'AI_CONVERSATION',
 }
 
@@ -97,7 +99,41 @@ export interface DeckDto {
   createdAt: string;
 }
 
+export interface GeneratedSentence {
+  hanzi: string;
+  pinyin: string;
+  meaningVi: string;
+  tokens: string[];
+}
+
+export interface SentenceDto {
+  id: string;
+  sentenceDeckId: string;
+  hanzi: string;
+  pinyin: string;
+  meaningVi: string;
+  tokens: string[];
+  hskLevel: HskLevel;
+}
+
+export interface SentenceDeckDto {
+  id: string;
+  userId: string;
+  title: string;
+  topic: string;
+  hskLevel: HskLevel;
+  source: DeckSource;
+  wordCount?: number;
+  createdAt: string;
+}
+
 export interface GenerateVocabDto {
+  topic: string;
+  hskLevel: HskLevel;
+  count: number;
+}
+
+export interface GenerateSentencesDto {
   topic: string;
   hskLevel: HskLevel;
   count: number;
@@ -125,11 +161,33 @@ export interface UserWordProgressDto {
   word?: WordDto;
 }
 
+export interface UserSentenceProgressDto {
+  id: string;
+  sentenceId: string;
+  status: WordStatus;
+  easeFactor: number;
+  intervalDays: number;
+  repetitions: number;
+  dueDate: string;
+  lastReviewedAt: string | null;
+  sentence?: SentenceDto;
+}
+
+export type SrsDueKind = 'words' | 'sentences' | 'all';
+
 export interface ReviewDto {
-  wordId: string;
+  wordId?: string;
+  sentenceId?: string;
   rating: ReviewRating;
   mode?: PracticeMode;
   isCorrect?: boolean;
+}
+
+export interface MatchPairItem {
+  key: string;
+  hanzi: string;
+  meaningVi: string;
+  wordId: string;
 }
 
 export interface PracticeQuestion {
@@ -139,13 +197,16 @@ export interface PracticeQuestion {
   hint?: string;
   options?: string[];
   tokens?: string[];
+  matchPairs?: MatchPairItem[];
   answer: string;
   wordId?: string;
+  sentenceId?: string;
 }
 
 export interface GradePracticeDto {
   mode: PracticeMode;
   wordId?: string;
+  sentenceId?: string;
   userAnswer: string;
   correctAnswer: string;
 }
@@ -175,6 +236,7 @@ export interface StatsOverview {
   /** @deprecated use wordsDueNow */
   wordsDueToday: number;
   wordsDueNow?: number;
+  sentencesDueNow?: number;
   streakCount: number;
   accuracyByMode: Record<string, { total: number; correct: number; accuracy: number }>;
   progressOverTime: Array<{ date: string; reviews: number; correct: number }>;
@@ -190,6 +252,8 @@ export const PRACTICE_MODE_LABELS: Record<PracticeMode, string> = {
   [PracticeMode.LISTEN_TYPE]: 'Nghe & gõ',
   [PracticeMode.FILL_BLANK]: 'Điền khuyết',
   [PracticeMode.SENTENCE_ORDER]: 'Sắp câu',
+  [PracticeMode.WORD_BANK]: 'Ghép câu',
+  [PracticeMode.MATCH_PAIRS]: 'Ghép cặp',
   [PracticeMode.AI_CONVERSATION]: 'Hội thoại AI',
 };
 

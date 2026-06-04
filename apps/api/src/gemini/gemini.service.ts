@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
-import { GeneratedWord, HskLevel } from '@linguaflow/shared';
+import { GeneratedSentence, GeneratedWord, HskLevel } from '@linguaflow/shared';
 
 @Injectable()
 export class GeminiService {
@@ -100,6 +100,61 @@ Chỉ dùng từ vựng phù hợp ${hskLevel}. Không trùng lặp.`;
       const text = result.response.text();
       const parsed = JSON.parse(text) as { words: GeneratedWord[] };
       return parsed.words.slice(0, count);
+    } catch (error) {
+      this.handleGeminiError(error);
+    }
+  }
+
+  async generateSentences(
+    topic: string,
+    hskLevel: HskLevel,
+    count: number,
+  ): Promise<GeneratedSentence[]> {
+    const model = this.getModel({
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: SchemaType.OBJECT,
+        properties: {
+          sentences: {
+            type: SchemaType.ARRAY,
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                hanzi: { type: SchemaType.STRING },
+                pinyin: { type: SchemaType.STRING },
+                meaningVi: { type: SchemaType.STRING },
+                tokens: {
+                  type: SchemaType.ARRAY,
+                  items: { type: SchemaType.STRING },
+                },
+              },
+              required: ['hanzi', 'pinyin', 'meaningVi', 'tokens'],
+            },
+          },
+        },
+        required: ['sentences'],
+      },
+    });
+
+    const prompt = `Bạn là chuyên gia dạy tiếng Trung cho người Việt.
+Sinh ${count} câu tiếng Trung giao tiếp thực tế, trình độ ${hskLevel}, chủ đề "${topic}".
+Mỗi câu cần: hanzi, pinyin đầy đủ dấu thanh, nghĩa tiếng Việt, tokens (mảng các từ/cụm từ Hán theo đúng thứ tự ghép thành hanzi).
+Ví dụ tokens: ["我","喜欢","电视"] cho hanzi "我喜欢电视".
+Chỉ dùng ngữ pháp và từ vựng phù hợp ${hskLevel}. Không trùng lặp.`;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const parsed = JSON.parse(text) as { sentences: GeneratedSentence[] };
+      return parsed.sentences.slice(0, count).map((s) => ({
+        ...s,
+        tokens:
+          s.tokens?.length >= 2
+            ? s.tokens
+            : [...s.hanzi.replace(/\s+/g, '')].filter((c) =>
+                /[\u4e00-\u9fff]/.test(c),
+              ),
+      }));
     } catch (error) {
       this.handleGeminiError(error);
     }

@@ -30,7 +30,7 @@ cp apps/web/.env.example apps/web/.env.local
 
 # Chạy migration và seed dữ liệu demo
 pnpm db:migrate
-pnpm db:seed
+pnpm db:seed   # Prisma 7: seed không tự chạy sau migrate — gọi riêng
 
 # Build shared package
 pnpm --filter @linguaflow/shared build
@@ -64,6 +64,16 @@ pnpm dev
 # Hoặc chạy riêng
 pnpm dev:api   # http://localhost:4000
 pnpm dev:web   # http://localhost:3000
+```
+
+## Prisma (v7)
+
+Kết nối DB được cấu hình trong `apps/api/prisma.config.ts` (không còn `url` trong `schema.prisma`). Client sinh ra tại `apps/api/src/generated/prisma` và dùng adapter `@prisma/adapter-pg`.
+
+```bash
+pnpm --filter @linguaflow/api prisma:generate
+pnpm --filter @linguaflow/api prisma:migrate
+pnpm --filter @linguaflow/api prisma:seed
 ```
 
 ## Tài khoản demo

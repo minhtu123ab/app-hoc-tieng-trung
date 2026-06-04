@@ -59,15 +59,23 @@ export class PracticeController {
     @Param('mode', new ParseEnumPipe(PracticeMode)) mode: PracticeMode,
     @Query('limit') limit?: string,
     @Query('deckId') deckId?: string,
+    @Query('scope') scope?: string,
+    @Query('source') source?: string,
+    @Query('sentenceDeckId') sentenceDeckId?: string,
   ) {
     const parsedLimit = limit
       ? Math.min(Math.max(parseInt(limit, 10) || 10, 1), 500)
       : 10;
+    const safeScope = scope === 'due' ? 'due' : 'all';
+    const safeSource = source === 'sentences' ? 'sentences' : 'words';
     return this.practiceService.getQuestions(
       req.user.userId,
       mode,
       parsedLimit,
       deckId,
+      safeScope,
+      safeSource,
+      sentenceDeckId,
     );
   }
 }

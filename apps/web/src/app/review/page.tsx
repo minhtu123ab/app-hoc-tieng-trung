@@ -8,11 +8,16 @@ import { Card, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/page-header';
 import { PageSkeleton, ErrorRetry } from '@/components/ui/states';
-import type { UserWordProgressDto, StatsOverview } from '@linguaflow/shared';
+import type {
+  StatsOverview,
+  UserSentenceProgressDto,
+  UserWordProgressDto,
+} from '@linguaflow/shared';
 import { ReviewRating, WordStatus } from '@linguaflow/shared';
 import { speakChinese } from '@/lib/tts';
 import { wordStatusLabel } from '@/lib/word-status';
 import { Volume2, Brain, Lightbulb, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const STATUS_LEGEND = [
   WordStatus.NEW,
@@ -21,7 +26,10 @@ const STATUS_LEGEND = [
   WordStatus.MASTERED,
 ] as const;
 
+type ReviewKind = 'words' | 'sentences';
+
 export default function ReviewPage() {
+  const [kind, setKind] = useState<ReviewKind>('words');
   const [index, setIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [reviewedCount, setReviewedCount] = useState(0);
@@ -29,14 +37,14 @@ export default function ReviewPage() {
   const queryClient = useQueryClient();
 
   const {
-    data: dueWords,
+    data: dueItems,
     isLoading,
     error,
     refetch,
-  } = useQuery<UserWordProgressDto[]>({
-    queryKey: ['srs-due'],
+  } = useQuery<UserWordProgressDto[] | UserSentenceProgressDto[]>({
+    queryKey: ['srs-due', kind],
     queryFn: async () => {
-      const { data } = await api.get('/srs/due');
+      const { data } = await api.get(`/srs/due?kind=${kind}`);
       return data;
     },
   });
@@ -51,27 +59,41 @@ export default function ReviewPage() {
 
   const reviewMutation = useMutation({
     mutationFn: async (rating: ReviewRating) => {
-      const word = dueWords![index];
-      await api.post('/srs/review', {
-        wordId: word.wordId,
-        rating,
-      });
+      const item = dueItems![index];
+      if (kind === 'sentences') {
+        const sentence = item as UserSentenceProgressDto;
+        await api.post('/srs/review', {
+          sentenceId: sentence.sentenceId,
+          rating,
+        });
+      } else {
+        const word = item as UserWordProgressDto;
+        await api.post('/srs/review', {
+          wordId: word.wordId,
+          rating,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['srs-due'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
       setShowAnswer(false);
       setReviewedCount((c) => c + 1);
-      if (index >= (dueWords?.length ?? 1) - 1) {
+      if (index >= (dueItems?.length ?? 1) - 1) {
         setSessionDone(true);
       } else {
         setIndex(index + 1);
       }
     },
-    onError: () => {
-      /* error shown via isError */
-    },
   });
+
+  const switchKind = (next: ReviewKind) => {
+    setKind(next);
+    setIndex(0);
+    setShowAnswer(false);
+    setReviewedCount(0);
+    setSessionDone(false);
+  };
 
   if (isLoading) return <PageSkeleton />;
   if (error) {
@@ -80,14 +102,20 @@ export default function ReviewPage() {
     );
   }
 
-  if (sessionDone || !dueWords?.length) {
-    const empty = !dueWords?.length && !sessionDone;
+  const dueCount =
+    kind === 'words' ? (stats?.wordsDueNow ?? 0) : (stats?.sentencesDueNow ?? 0);
+  const itemLabel = kind === 'words' ? 'từ' : 'câu';
+  const itemLabelCap = kind === 'words' ? 'Từ' : 'Câu';
+
+  if (sessionDone || !dueItems?.length) {
+    const empty = !dueItems?.length && !sessionDone;
     return (
       <div className="w-full space-y-6">
         <PageHeader
           title="Ôn tập SRS"
           description="Hệ thống ôn tập ngắt quãng (Spaced Repetition)"
         />
+        <KindTabs kind={kind} onChange={switchKind} />
         <Card className="mx-auto max-w-lg py-12 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10">
             {sessionDone ? (
@@ -98,7 +126,7 @@ export default function ReviewPage() {
           </div>
           <CardTitle>
             {sessionDone
-              ? `Đã ôn ${reviewedCount} từ!`
+              ? `Đã ôn ${reviewedCount} ${itemLabel}!`
               : empty
                 ? 'Hoàn thành hôm nay!'
                 : 'Hoàn thành phiên ôn'}
@@ -106,14 +134,16 @@ export default function ReviewPage() {
           <p className="mt-2 text-muted">
             {sessionDone
               ? `Chuỗi ngày: ${stats?.streakCount ?? 0}. Quay lại sau hoặc luyện thêm.`
-              : 'Không có từ nào cần ôn. Quay lại sau hoặc học từ mới.'}
+              : `Không có ${itemLabel} nào cần ôn. Quay lại sau hoặc học thêm.`}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Link href="/practice">
               <Button>Luyện tập</Button>
             </Link>
             <Link href="/generate">
-              <Button variant="outline">Sinh từ AI</Button>
+              <Button variant="outline">
+                {kind === 'words' ? 'Sinh từ AI' : 'Sinh câu AI'}
+              </Button>
             </Link>
           </div>
         </Card>
@@ -121,22 +151,23 @@ export default function ReviewPage() {
     );
   }
 
-  const current = dueWords[index];
-  const word = current.word!;
-  const progress = ((index + 1) / dueWords.length) * 100;
+  const current = dueItems[index];
+  const progress = ((index + 1) / dueItems.length) * 100;
 
   return (
     <div className="w-full space-y-6">
       <PageHeader
         title="Ôn tập SRS"
-        description="Đánh giá mức nhớ từ — thuật toán SM-2 tự lên lịch ôn tiếp theo"
+        description="Đánh giá mức nhớ — thuật toán SM-2 tự lên lịch ôn tiếp theo"
       />
+
+      <KindTabs kind={kind} onChange={switchKind} />
 
       <div className="grid gap-6 lg:grid-cols-12 xl:gap-8">
         <div className="space-y-4 lg:col-span-8">
           <div className="flex items-center justify-between gap-4 text-sm">
             <span className="font-medium text-foreground">
-              Từ {index + 1} / {dueWords.length}
+              {itemLabelCap} {index + 1} / {dueItems.length}
               {reviewedCount > 0 && (
                 <span className="ml-2 text-muted">· Đã ôn {reviewedCount}</span>
               )}
@@ -163,58 +194,53 @@ export default function ReviewPage() {
           )}
 
           <Card className="px-6 py-10 text-center sm:px-10 sm:py-14">
-            <div className="flex items-center justify-center gap-3">
-              <p className="chinese-text text-6xl font-bold sm:text-7xl">{word.hanzi}</p>
-              <Button variant="ghost" size="sm" onClick={() => speakChinese(word.hanzi)}>
-                <Volume2 className="h-6 w-6" />
-              </Button>
-            </div>
-            <p className="mt-3 text-lg text-muted">{word.pinyin}</p>
+            {kind === 'words' ? (
+              <WordReviewCard
+                item={current as UserWordProgressDto}
+                showAnswer={showAnswer}
+                onSpeak={speakChinese}
+              />
+            ) : (
+              <SentenceReviewCard
+                item={current as UserSentenceProgressDto}
+                showAnswer={showAnswer}
+                onSpeak={speakChinese}
+              />
+            )}
 
             {showAnswer ? (
-              <div className="mt-8">
-                <p className="text-2xl font-semibold">{word.meaningVi}</p>
-                {word.exampleHanzi && (
-                  <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-left">
-                    <p className="chinese-text text-base">{word.exampleHanzi}</p>
-                    {word.exampleVi && (
-                      <p className="mt-1 text-sm text-muted">{word.exampleVi}</p>
-                    )}
-                  </div>
-                )}
-                <div className="mt-8 grid grid-cols-2 gap-3 sm:mx-auto sm:max-w-md">
-                  <Button
-                    variant="destructive"
-                    size="lg"
-                    onClick={() => reviewMutation.mutate(ReviewRating.AGAIN)}
-                    disabled={reviewMutation.isPending}
-                  >
-                    Quên
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => reviewMutation.mutate(ReviewRating.HARD)}
-                    disabled={reviewMutation.isPending}
-                  >
-                    Khó
-                  </Button>
-                  <Button
-                    size="lg"
-                    onClick={() => reviewMutation.mutate(ReviewRating.GOOD)}
-                    disabled={reviewMutation.isPending}
-                  >
-                    Đúng
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => reviewMutation.mutate(ReviewRating.EASY)}
-                    disabled={reviewMutation.isPending}
-                  >
-                    Dễ
-                  </Button>
-                </div>
+              <div className="mt-8 grid grid-cols-2 gap-3 sm:mx-auto sm:max-w-md">
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  onClick={() => reviewMutation.mutate(ReviewRating.AGAIN)}
+                  disabled={reviewMutation.isPending}
+                >
+                  Quên
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => reviewMutation.mutate(ReviewRating.HARD)}
+                  disabled={reviewMutation.isPending}
+                >
+                  Khó
+                </Button>
+                <Button
+                  size="lg"
+                  onClick={() => reviewMutation.mutate(ReviewRating.GOOD)}
+                  disabled={reviewMutation.isPending}
+                >
+                  Đúng
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => reviewMutation.mutate(ReviewRating.EASY)}
+                  disabled={reviewMutation.isPending}
+                >
+                  Dễ
+                </Button>
               </div>
             ) : (
               <Button className="mt-10 px-8" size="lg" onClick={() => setShowAnswer(true)}>
@@ -224,7 +250,7 @@ export default function ReviewPage() {
           </Card>
 
           <p className="text-center text-xs text-muted">
-            Chỉ chuyển từ sau khi bạn đánh giá (Quên / Khó / Đúng / Dễ) — tránh sai lịch SRS.
+            Chỉ chuyển {itemLabel} sau khi bạn đánh giá (Quên / Khó / Đúng / Dễ) — tránh sai lịch SRS.
           </p>
         </div>
 
@@ -236,8 +262,10 @@ export default function ReviewPage() {
             </CardTitle>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-white/80 p-3 text-center">
-                <p className="text-2xl font-bold text-primary">{dueWords.length}</p>
-                <p className="text-xs text-muted">Từ cần ôn</p>
+                <p className="text-2xl font-bold text-primary">{dueCount}</p>
+                <p className="text-xs text-muted">
+                  {kind === 'words' ? 'Từ cần ôn' : 'Câu cần ôn'}
+                </p>
               </div>
               <div className="rounded-xl bg-white/80 p-3 text-center">
                 <p className="text-2xl font-bold text-orange-600">
@@ -273,5 +301,104 @@ export default function ReviewPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+function KindTabs({
+  kind,
+  onChange,
+}: {
+  kind: ReviewKind;
+  onChange: (kind: ReviewKind) => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      {(
+        [
+          { id: 'words' as const, label: 'Từ vựng' },
+          { id: 'sentences' as const, label: 'Câu' },
+        ] as const
+      ).map(({ id, label }) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onChange(id)}
+          className={cn(
+            'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+            kind === id
+              ? 'bg-primary text-white'
+              : 'bg-slate-100 text-muted hover:bg-slate-200',
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function WordReviewCard({
+  item,
+  showAnswer,
+  onSpeak,
+}: {
+  item: UserWordProgressDto;
+  showAnswer: boolean;
+  onSpeak: (text: string) => void;
+}) {
+  const word = item.word!;
+  return (
+    <>
+      <div className="flex items-center justify-center gap-3">
+        <p className="chinese-text text-6xl font-bold sm:text-7xl">{word.hanzi}</p>
+        <Button variant="ghost" size="sm" onClick={() => onSpeak(word.hanzi)}>
+          <Volume2 className="h-6 w-6" />
+        </Button>
+      </div>
+      <p className="mt-3 text-lg text-muted">{word.pinyin}</p>
+      {showAnswer && (
+        <div className="mt-8">
+          <p className="text-2xl font-semibold">{word.meaningVi}</p>
+          {word.exampleHanzi && (
+            <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-left">
+              <p className="chinese-text text-base">{word.exampleHanzi}</p>
+              {word.exampleVi && (
+                <p className="mt-1 text-sm text-muted">{word.exampleVi}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function SentenceReviewCard({
+  item,
+  showAnswer,
+  onSpeak,
+}: {
+  item: UserSentenceProgressDto;
+  showAnswer: boolean;
+  onSpeak: (text: string) => void;
+}) {
+  const sentence = item.sentence!;
+  return (
+    <>
+      <div className="flex items-center justify-center gap-3">
+        <p className="chinese-text text-4xl font-bold sm:text-5xl">{sentence.hanzi}</p>
+        <Button variant="ghost" size="sm" onClick={() => onSpeak(sentence.hanzi)}>
+          <Volume2 className="h-6 w-6" />
+        </Button>
+      </div>
+      {showAnswer ? (
+        <div className="mt-8">
+          <p className="text-lg text-muted">{sentence.pinyin}</p>
+          <p className="mt-4 text-2xl font-semibold">{sentence.meaningVi}</p>
+        </div>
+      ) : (
+        <p className="mt-6 text-sm text-muted">Nhớ nghĩa tiếng Việt của câu này</p>
+      )}
+    </>
   );
 }

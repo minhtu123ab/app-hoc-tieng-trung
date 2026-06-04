@@ -121,6 +121,9 @@ export default function DecksPage() {
                 e.target.value = '';
               }}
             />
+            <ButtonLink href="/sentence-decks" variant="outline">
+              Bộ câu
+            </ButtonLink>
             <ButtonLink href="/generate">
               <Sparkles className="h-4 w-4" />
               Sinh từ AI

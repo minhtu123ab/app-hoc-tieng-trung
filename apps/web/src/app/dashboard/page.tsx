@@ -23,7 +23,8 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const dueCount = stats?.wordsDueNow ?? stats?.wordsDueToday ?? 0;
+  const dueCount =
+    (stats?.wordsDueNow ?? stats?.wordsDueToday ?? 0) + (stats?.sentencesDueNow ?? 0);
   const goalPct = stats?.dailyGoalProgress ?? 0;
   const reviewsToday = stats?.reviewsToday ?? 0;
   const dailyGoal = stats?.dailyGoal ?? user?.dailyGoal ?? 20;

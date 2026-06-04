@@ -20,6 +20,7 @@ import {
   PanelLeftOpen,
   X,
   Menu,
+  ListOrdered,
   Settings,
 } from 'lucide-react';
 
@@ -27,6 +28,7 @@ const navItems = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/generate', label: 'Sinh từ AI', icon: Sparkles },
   { href: '/decks', label: 'Bộ từ', icon: BookOpen },
+  { href: '/sentence-decks', label: 'Bộ câu', icon: ListOrdered },
   { href: '/review', label: 'Ôn tập SRS', icon: Brain },
   { href: '/practice', label: 'Luyện tập', icon: Dumbbell },
   { href: '/tutor', label: 'Gia sư AI', icon: MessageCircle },

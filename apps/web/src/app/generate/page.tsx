@@ -13,15 +13,20 @@ import { Card, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/layout/page-header';
 import { HskLevel, TOPICS } from '@linguaflow/shared';
 import { Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type GenerateTab = 'words' | 'sentences';
 
 export default function GeneratePage() {
+  const [tab, setTab] = useState<GenerateTab>('words');
   const [topic, setTopic] = useState<string>(TOPICS[0]);
   const [customTopic, setCustomTopic] = useState('');
   const [hskLevel, setHskLevel] = useState<HskLevel>(HskLevel.HSK1);
   const [count, setCount] = useState(20);
+  const [sentenceCount, setSentenceCount] = useState(15);
   const router = useRouter();
 
-  const mutation = useMutation({
+  const vocabMutation = useMutation({
     mutationFn: async () => {
       const { data } = await api.post('/ai/generate-vocab', {
         topic: customTopic || topic,
@@ -35,23 +40,70 @@ export default function GeneratePage() {
     },
   });
 
-  const errorMessage = mutation.isError
-    ? axios.isAxiosError(mutation.error)
-      ? (mutation.error.response?.data as { message?: string })?.message ??
-        mutation.error.message
-      : 'Không thể sinh từ vựng. Vui lòng thử lại.'
+  const sentenceMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/ai/generate-sentences', {
+        topic: customTopic || topic,
+        hskLevel,
+        count: sentenceCount,
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      router.push(`/sentence-decks/${data.id}`);
+    },
+  });
+
+  const activeMutation = tab === 'words' ? vocabMutation : sentenceMutation;
+
+  const errorMessage = activeMutation.isError
+    ? axios.isAxiosError(activeMutation.error)
+      ? (activeMutation.error.response?.data as { message?: string })?.message ??
+        activeMutation.error.message
+      : tab === 'words'
+        ? 'Không thể sinh từ vựng. Vui lòng thử lại.'
+        : 'Không thể sinh câu. Vui lòng thử lại.'
     : '';
 
   return (
     <div className="w-full space-y-6 xl:space-y-8">
       <PageHeader
-        title="Sinh từ vựng bằng AI"
-        description="Gemini sẽ tạo bộ từ vựng theo chủ đề và trình độ HSK của bạn"
+        title="Sinh nội dung bằng AI"
+        description="Gemini tạo bộ từ vựng hoặc bộ câu giao tiếp theo chủ đề và HSK"
       />
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setTab('words')}
+          className={cn(
+            'rounded-xl border px-4 py-2 text-sm font-medium transition-colors',
+            tab === 'words'
+              ? 'border-primary bg-red-50 text-primary'
+              : 'border-border hover:bg-slate-50',
+          )}
+        >
+          Từ vựng
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('sentences')}
+          className={cn(
+            'rounded-xl border px-4 py-2 text-sm font-medium transition-colors',
+            tab === 'sentences'
+              ? 'border-primary bg-red-50 text-primary'
+              : 'border-border hover:bg-slate-50',
+          )}
+        >
+          Câu / hội thoại
+        </button>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-12 xl:gap-8">
         <Card className="lg:col-span-5 xl:col-span-4">
-          <CardTitle>Cấu hình</CardTitle>
+          <CardTitle>
+            {tab === 'words' ? 'Sinh từ vựng' : 'Sinh bộ câu'}
+          </CardTitle>
           <div className="mt-4 space-y-4">
             <div>
               <label className="mb-1 block text-sm">Chủ đề</label>
@@ -77,47 +129,79 @@ export default function GeneratePage() {
                 options={HSK_LEVEL_OPTIONS}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm">Số lượng từ ({count})</label>
-              <input
-                type="range"
-                min={5}
-                max={50}
-                value={count}
-                onChange={(e) => setCount(Number(e.target.value))}
-                className="w-full"
-              />
-            </div>
-            {mutation.isError && (
+            {tab === 'words' ? (
+              <div>
+                <label className="mb-1 block text-sm">Số lượng từ ({count})</label>
+                <input
+                  type="range"
+                  min={5}
+                  max={50}
+                  value={count}
+                  onChange={(e) => setCount(Number(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="mb-1 block text-sm">
+                  Số câu ({sentenceCount})
+                </label>
+                <input
+                  type="range"
+                  min={5}
+                  max={30}
+                  value={sentenceCount}
+                  onChange={(e) => setSentenceCount(Number(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+            )}
+            {activeMutation.isError && (
               <p className="text-sm text-red-600">{errorMessage}</p>
             )}
             <Button
-              onClick={() => mutation.mutate()}
-              disabled={mutation.isPending}
+              onClick={() =>
+                tab === 'words'
+                  ? vocabMutation.mutate()
+                  : sentenceMutation.mutate()
+              }
+              disabled={activeMutation.isPending}
               className="w-full gap-2"
             >
               <Sparkles className="h-4 w-4" />
-              {mutation.isPending ? 'Đang sinh từ vựng...' : `Sinh ${count} từ`}
+              {activeMutation.isPending
+                ? 'Đang sinh...'
+                : tab === 'words'
+                  ? `Sinh ${count} từ`
+                  : `Sinh ${sentenceCount} câu`}
             </Button>
           </div>
         </Card>
 
         <Card className="border-primary/10 bg-gradient-to-br from-red-50/80 via-white to-amber-50/50 lg:col-span-7 xl:col-span-8">
-          <CardTitle>Mẹo sinh từ hiệu quả</CardTitle>
+          <CardTitle>
+            {tab === 'words' ? 'Mẹo sinh từ' : 'Mẹo sinh câu'}
+          </CardTitle>
           <ul className="mt-4 space-y-3 text-sm leading-relaxed text-slate-700">
-            <li>
-              Chọn <strong>chủ đề cụ thể</strong> (vd. &quot;Đặt phòng khách sạn&quot;) thay vì chủ đề
-              quá rộng — AI sẽ cho từ vựng sát thực tế hơn.
-            </li>
-            <li>
-              Bắt đầu với <strong>20–30 từ</strong> mỗi lần; học xong rồi sinh thêm để tránh quá tải.
-            </li>
-            <li>
-              Khớp <strong>trình độ HSK</strong> với năng lực hiện tại — từ khó quá sẽ khó nhớ trong SRS.
-            </li>
-            <li>
-              Sau khi sinh, từ được <strong>tự động thêm</strong> vào tiến trình luyện tập và ôn SRS.
-            </li>
+            {tab === 'words' ? (
+              <>
+                <li>
+                  Chọn <strong>chủ đề cụ thể</strong> để AI cho từ vựng sát thực tế hơn.
+                </li>
+                <li>Bắt đầu với 20–30 từ mỗi lần.</li>
+                <li>Sau khi sinh, từ được tự động thêm vào SRS và luyện tập.</li>
+              </>
+            ) : (
+              <>
+                <li>
+                  Bộ câu dùng cho chế độ <strong>Ghép câu</strong>,{' '}
+                  <strong>Sắp câu</strong>, <strong>Nghe & gõ</strong>,{' '}
+                  <strong>Điền từ</strong>.
+                </li>
+                <li>AI tách sẵn <strong>tokens</strong> để ghép câu chuẩn Duolingo.</li>
+                <li>Chọn chủ đề giao tiếp: đặt phòng, mua sắm, giới thiệu bản thân...</li>
+              </>
+            )}
           </ul>
         </Card>
       </div>

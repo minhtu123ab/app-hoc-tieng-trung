@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ReviewRating,
+  SrsDueKind,
+  UserSentenceProgressDto,
   UserWordProgressDto,
   WordStatus,
 } from '@linguaflow/shared';
@@ -111,7 +113,61 @@ export class SrsService {
     }));
   }
 
+  async getDueSentences(userId: string): Promise<UserSentenceProgressDto[]> {
+    const now = new Date();
+    const items = await this.prisma.userSentenceProgress.findMany({
+      where: {
+        userId,
+        dueDate: { lte: now },
+      },
+      include: { sentence: true },
+      orderBy: { dueDate: 'asc' },
+      take: 50,
+    });
+
+    return items.map((item) => ({
+      id: item.id,
+      sentenceId: item.sentenceId,
+      status: item.status as WordStatus,
+      easeFactor: item.easeFactor,
+      intervalDays: item.intervalDays,
+      repetitions: item.repetitions,
+      dueDate: item.dueDate.toISOString(),
+      lastReviewedAt: item.lastReviewedAt?.toISOString() ?? null,
+      sentence: {
+        id: item.sentence.id,
+        sentenceDeckId: item.sentence.sentenceDeckId,
+        hanzi: item.sentence.hanzi,
+        pinyin: item.sentence.pinyin,
+        meaningVi: item.sentence.meaningVi,
+        tokens: item.sentence.tokens,
+        hskLevel: item.sentence.hskLevel as UserSentenceProgressDto['sentence'] extends infer S
+          ? S extends { hskLevel: infer H }
+            ? H
+            : never
+          : never,
+      },
+    }));
+  }
+
+  async getDue(userId: string, kind: SrsDueKind = 'words') {
+    if (kind === 'sentences') {
+      return this.getDueSentences(userId);
+    }
+    if (kind === 'all') {
+      const [words, sentences] = await Promise.all([
+        this.getDueWords(userId),
+        this.getDueSentences(userId),
+      ]);
+      return { words, sentences };
+    }
+    return this.getDueWords(userId);
+  }
+
   async review(userId: string, dto: ReviewDto) {
+    if (!dto.wordId) {
+      throw new NotFoundException('wordId là bắt buộc');
+    }
     const progress = await this.prisma.userWordProgress.findUnique({
       where: { userId_wordId: { userId, wordId: dto.wordId } },
     });
@@ -146,6 +202,53 @@ export class SrsService {
     return {
       id: updated.id,
       wordId: updated.wordId,
+      status: updated.status,
+      easeFactor: updated.easeFactor,
+      intervalDays: updated.intervalDays,
+      repetitions: updated.repetitions,
+      dueDate: updated.dueDate.toISOString(),
+      lastReviewedAt: updated.lastReviewedAt?.toISOString() ?? null,
+    };
+  }
+
+  async reviewSentence(userId: string, dto: ReviewDto) {
+    if (!dto.sentenceId) {
+      throw new NotFoundException('sentenceId là bắt buộc');
+    }
+    const progress = await this.prisma.userSentenceProgress.findUnique({
+      where: { userId_sentenceId: { userId, sentenceId: dto.sentenceId } },
+    });
+    if (!progress) {
+      throw new NotFoundException('Câu chưa được thêm vào tiến trình học');
+    }
+
+    const sm2 = this.applySm2(progress, dto.rating);
+    const updated = await this.prisma.userSentenceProgress.update({
+      where: { id: progress.id },
+      data: {
+        easeFactor: sm2.easeFactor,
+        intervalDays: sm2.intervalDays,
+        repetitions: sm2.repetitions,
+        dueDate: sm2.dueDate,
+        status: sm2.status,
+        lastReviewedAt: new Date(),
+      },
+    });
+
+    await this.prisma.reviewLog.create({
+      data: {
+        userSentenceProgressId: progress.id,
+        rating: dto.rating,
+        mode: dto.mode ?? null,
+        isCorrect: dto.isCorrect ?? dto.rating !== ReviewRating.AGAIN,
+      },
+    });
+
+    await this.updateStreak(userId);
+
+    return {
+      id: updated.id,
+      sentenceId: updated.sentenceId,
       status: updated.status,
       easeFactor: updated.easeFactor,
       intervalDays: updated.intervalDays,

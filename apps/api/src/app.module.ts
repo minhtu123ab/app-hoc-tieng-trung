@@ -6,6 +6,7 @@ import { DecksModule } from './decks/decks.module';
 import { SrsModule } from './srs/srs.module';
 import { PracticeModule } from './practice/practice.module';
 import { TutorModule } from './tutor/tutor.module';
+import { SentencesModule } from './sentences/sentences.module';
 import { StatsModule } from './stats/stats.module';
 import { GeminiModule } from './gemini/gemini.module';
 import { HealthController } from './health.controller';
@@ -20,6 +21,7 @@ import { HealthController } from './health.controller';
     SrsModule,
     PracticeModule,
     TutorModule,
+    SentencesModule,
     StatsModule,
   ],
   controllers: [HealthController],
